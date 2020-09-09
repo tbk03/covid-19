@@ -32,13 +32,24 @@ imported_data = read_csv("LSOAs_latest.csv", na = c(-99, "NA"), col_types = cols
 In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week). So, I pivoted the data to create year and cases variables The values of the week variable are week numbers (starting with "wk_01" from 30/12/2019). The week numbers are stored as strings with a "wk_" prefix before the week number. So, first I extract the week numbers and convert them to integers, and then calculate the date each week commences on (stored as week_commencing).     
 
 ```{r}
-tidied_data <- imported_data %>% 
-  pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
-  
-  mutate(
-    week = as.integer(str_sub(week, 4, 5)),
-    week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
-  )
+
+tidy_lsoa_data <- function(df){
+  df %>% 
+    pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
+    
+    mutate(
+      week = as.integer(str_sub(week, 4, 5)),
+      week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
+    )
+}
+
+# tidied_data <- imported_data %>% 
+#   pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
+#   
+#   mutate(
+#     week = as.integer(str_sub(week, 4, 5)),
+#     week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
+#   )
 ```
 
 Then I quickly checked for missing data, by confirming that for each lower super output  there are rows for all the weeks covered by the dataset (weeks 5 - 35 of 2020).
@@ -181,9 +192,21 @@ total_cases_headline <- crosscheck_headline$cumCasesBySpecimenDate
 **Total cases (lsoa dataset)**:`r str_c(toString(total_cases_lsoa), "\n")` 
 **Total cases (headline dataset)**: `r toString(total_cases_headline)`
 
-It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only `r toString(round(total_cases_lsoa / total_cases_headline * 100, digits = 1))`%  of cases recorded in the headline dataset appearing in the LSOA dataset. 
+It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only `r toString(round(total_cases_lsoa / total_cases_headline * 100, digits = 1))`%  of cases recorded in the headline dataset appearing in the LSOA dataset. So, I emailed the contact on the https://coronavirus.data.gov.uk website to ask for further advice, and received the following reply.
 
-Adding a line to test git ...
+09/09/2020 from coronavirus-tracker@phe.gov.uk
+
+"Hi Chris,
+
+We have to suppress the number of cases if they are below 3, hence the LSOA file will not show if there were 1 or 2 cases in an area and they will be missed in the totals.
+
+Regards"
+
+
+```{r}
+
+```
+
 
 ## Initial plots
 ```{r}
