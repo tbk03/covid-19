@@ -183,6 +183,8 @@ total_cases_headline <- crosscheck_headline$cumCasesBySpecimenDate
 
 It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only `r toString(round(total_cases_lsoa / total_cases_headline * 100, digits = 1))`%  of cases recorded in the headline dataset appearing in the LSOA dataset. 
 
+Adding a line to test git ...
+
 ## Initial plots
 ```{r}
 p_leeds <- ggplot(data = cases_per_week_leeds, mapping = aes(
