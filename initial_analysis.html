@@ -385,13 +385,25 @@ library(lubridate)</code></pre>
 <div id="tidy-data-covid-19-case-data" class="section level2">
 <h2>Tidy data Covid-19 case data</h2>
 <p>In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week). So, I pivoted the data to create year and cases variables The values of the week variable are week numbers (starting with “wk_01” from 30/12/2019). The week numbers are stored as strings with a “wk_” prefix before the week number. So, first I extract the week numbers and convert them to integers, and then calculate the date each week commences on (stored as week_commencing).</p>
-<pre class="r"><code>tidied_data &lt;- imported_data %&gt;% 
-  pivot_longer(cols = `wk_05`:`wk_35`, names_to = &quot;week&quot;, values_to = &quot;cases&quot;) %&gt;% 
-  
-  mutate(
-    week = as.integer(str_sub(week, 4, 5)),
-    week_commencing = lubridate::ymd( &quot;2019-12-30&quot; ) + lubridate::weeks(week - 1)
-  )</code></pre>
+<pre class="r"><code>tidy_lsoa_data &lt;- function(df){
+  df %&gt;% 
+    pivot_longer(cols = `wk_05`:`wk_35`, names_to = &quot;week&quot;, values_to = &quot;cases&quot;) %&gt;% 
+    
+    mutate(
+      week = as.integer(str_sub(week, 4, 5)),
+      week_commencing = lubridate::ymd( &quot;2019-12-30&quot; ) + lubridate::weeks(week - 1)
+    )
+}
+
+tidied_data &lt;- tidy_lsoa_data(imported_data)
+
+# tidied_data &lt;- imported_data %&gt;% 
+#   pivot_longer(cols = `wk_05`:`wk_35`, names_to = &quot;week&quot;, values_to = &quot;cases&quot;) %&gt;% 
+#   
+#   mutate(
+#     week = as.integer(str_sub(week, 4, 5)),
+#     week_commencing = lubridate::ymd( &quot;2019-12-30&quot; ) + lubridate::weeks(week - 1)
+#   )</code></pre>
 <p>Then I quickly checked for missing data, by confirming that for each lower super output there are rows for all the weeks covered by the dataset (weeks 5 - 35 of 2020).</p>
 <pre class="r"><code>number_of_distinct_values &lt;- function(df, var_name){
     n_distinct(df[var_name])
@@ -511,8 +523,17 @@ crosscheck_headline &lt;- gov_headline_data %&gt;%
 total_cases_headline &lt;- crosscheck_headline$cumCasesBySpecimenDate  </code></pre>
 <p><strong>Total cases (lsoa dataset)</strong>:106752</p>
 <p><strong>Total cases (headline dataset)</strong>: 292025</p>
-<p>It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only 36.6% of cases recorded in the headline dataset appearing in the LSOA dataset.</p>
-<p>Adding a line to test git …</p>
+<p>It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only 36.6% of cases recorded in the headline dataset appearing in the LSOA dataset. So, I emailed the contact on the <a href="https://coronavirus.data.gov.uk" class="uri">https://coronavirus.data.gov.uk</a> website to ask for further advice, and received the following reply.</p>
+<p>09/09/2020 from <a href="mailto:coronavirus-tracker@phe.gov.uk" class="email">coronavirus-tracker@phe.gov.uk</a></p>
+<p>&quot;Hi Chris,</p>
+<p>We have to suppress the number of cases if they are below 3, hence the LSOA file will not show if there were 1 or 2 cases in an area and they will be missed in the totals.</p>
+<p>Regards&quot;</p>
+<pre class="r"><code># need to replace NA with 2 in imported data
+cases_lsoa &lt;- tidied_data %&gt;% 
+  mutate(cases = replace_na(cases, 2))
+
+sum(cases_lsoa$cases)</code></pre>
+<pre><code>## [1] 2097428</code></pre>
 </div>
 </div>
 </div>

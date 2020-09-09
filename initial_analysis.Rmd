@@ -43,6 +43,8 @@ tidy_lsoa_data <- function(df){
     )
 }
 
+tidied_data <- tidy_lsoa_data(imported_data)
+
 # tidied_data <- imported_data %>% 
 #   pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
 #   
@@ -131,18 +133,32 @@ View(eng_head_data_by_week)
 Plotting the cases over time for both the LSOA and Government headline datasets shows considerable differences in the number of cases recorded for each week. Although the overall trends in numbers of cases are similar both datasets, i.e. movements up or down in the number cases in the headline data tends to be track by similar movements in the LSOA data.
 ```{r}
 
-cases_per_week_nat_comp <- cases_per_week_national %>% 
-  left_join(eng_head_data_by_week, by = "week_commencing") %>% 
+cases_per_week_comparision <- function(lsoa_df, headline_df){
+  lsoa_df %>% 
+  left_join(headline_df, by = "week_commencing") %>% 
   rename(lsoa_cases = weekly_cases, headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
   pivot_longer(cols = c(lsoa_cases, headline_cases), names_to = "dataset", values_to = "cases")
+}
+
+cases_per_week_nat_comp <- cases_per_week_comparision(cases_per_week_national, eng_head_data_by_week) 
+
+# cases_per_week_nat_comp <- cases_per_week_national %>% 
+#   left_join(eng_head_data_by_week, by = "week_commencing") %>% 
+#   rename(lsoa_cases = weekly_cases, headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
+#   pivot_longer(cols = c(lsoa_cases, headline_cases), names_to = "dataset", values_to = "cases")
   
-ggplot(data = cases_per_week_nat_comp, mapping = aes(x = week_commencing, y = cases, fill = dataset)) +
+
+cases_per_week_comp_plot <- function(df){
+  ggplot(data = df, mapping = aes(x = week_commencing, y = cases, fill = dataset)) +
   geom_col(position = "dodge") +
   scale_fill_manual(values=c("indianred3" ,"grey")) +
   scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
   labs(x = NULL, y = "Number of cases (per week)", title = "Title") +
   coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
   theme_minimal()
+}
+
+cases_per_week_comp_plot(cases_per_week_nat_comp)
 
 ```
 Given the scale of the differences between the case numbers in the two datasets, I'll investigate these difference a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
@@ -203,6 +219,40 @@ We have to suppress the number of cases if they are below 3, hence the LSOA file
 Regards"
 
 
+```{r}
+
+# need to replace NA with 2 in imported data
+cases_lsoa_p2 <- tidied_data 
+#   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
+cases_lsoa_p2$cases[is.na(cases_lsoa_p2$cases)] <- sample(
+  c(0,1,2), 
+  size=sum(is.na(cases_lsoa_p2$cases)),
+  prob = c(0.5, 0.25, 0.25),
+  replace=TRUE
+  )
+
+#sample(c(0, 1, 2), 1, replace = TRUE)
+
+sum(cases_lsoa_p2$cases)
+
+```
+```{r}
+df <- structure(list(Brand = structure(c(2L, 2L, 1L, 1L, 3L, 3L), 
+.Label = c("Dodge", 
+"Honda", "Mercedes"), class = "factor"), year = c(2010L, 2011L, 
+2010L, 2011L, 2010L, 2011L), mpg = c(30L, 28L, 20L, 23L, 22L, 
+25L), reputation = c(8.5, 8.5, 6.5, 7, 9.5, 9), Luxury = c(5, 
+5.5, 6, 6.5, NA, NA)), class = "data.frame", row.names = c(NA, -6L))
+
+vals <- seq(0.9, 1, 0.01)
+df[is.na(df)] <- sample(vals, sum(is.na(df)), replace = TRUE)
+```
+
+```{r}
+cases_per_week_lsoa_p2 <- get_cases_by_week(cases_lsoa_p2)
+cases_per_week_nat_comp_p2 <- cases_per_week_comparision(cases_per_week_lsoa_p2, eng_head_data_by_week)
+cases_per_week_comp_plot(cases_per_week_nat_comp_p2)
+```
 ```{r}
 
 ```
