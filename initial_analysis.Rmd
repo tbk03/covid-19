@@ -1,0 +1,222 @@
+---
+title: "Initial analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Import packages
+```{r message = FALSE}
+library(Rmisc)
+library(tidyverse)
+library(tidyquant)
+library(ggplot2)
+library(lubridate)
+```
+## Import Covid-19 case data for England
+Cases by Lower Super Output Area (LSOA) from https://coronavirus.data.gov.uk/about-data on 6th September 2020. 
+
+For England only. 
+
+Initially the wk_10 column causing parsing errors because the parser in read_csv was guessing it was a logical column (as the first n rows contained NA as a value), so it was neccesary to explicitly define wk_10 as an integer column.
+
+"Counts between 0 and 2 are denoted by -99", I initially treated -99 as equivalent to NA when reading in the csv. But it might be better to replace -99 with a number, possbly 1?
+
+```{r message = FALSE}
+imported_data = read_csv("LSOAs_latest.csv", na = c(-99, "NA"), col_types = cols(wk_10 = col_integer()))
+```
+
+## Tidy data Covid-19 case data
+In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week). So, I pivoted the data to create year and cases variables The values of the week variable are week numbers (starting with "wk_01" from 30/12/2019). The week numbers are stored as strings with a "wk_" prefix before the week number. So, first I extract the week numbers and convert them to integers, and then calculate the date each week commences on (stored as week_commencing).     
+
+```{r}
+tidied_data <- imported_data %>% 
+  pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
+  
+  mutate(
+    week = as.integer(str_sub(week, 4, 5)),
+    week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
+  )
+```
+
+Then I quickly checked for missing data, by confirming that for each lower super output  there are rows for all the weeks covered by the dataset (weeks 5 - 35 of 2020).
+
+```{r}
+number_of_distinct_values <- function(df, var_name){
+    n_distinct(df[var_name])
+}
+
+num_lso <- number_of_distinct_values(tidied_data, "lsoa11_nm")
+num_weeks <- number_of_distinct_values(tidied_data, "week")
+
+num_obs <- nrow(tidied_data)
+
+
+stopifnot(num_lso * num_weeks == num_obs)
+```
+
+
+
+## Focus on Leeds cases
+As I'm interested in Leeds in particular,  I created a tibble of Leeds case data. But also I want to compare the data for Leeds to equivalent national data for England. As the number of cases in Leeds is likely to be a very small proportion of the total number of cases, I have also create a rest of England (i.e. England - Leeds) dataset for comparision.
+
+```{r}
+
+leeds_cases <- tidied_data %>%
+  filter(startsWith(lsoa11_nm, "Leeds"))
+
+rest_of_england_cases <- tidied_data %>% 
+  filter(!startsWith(lsoa11_nm, "Leeds"))
+
+View(leeds_cases)
+
+```
+
+
+## Cases by week
+
+I has quick look to see if there are any discrepancies between the UK Government covid-19 data portal (https://coronavirus.data.gov.uk/cases?areaType=nation&areaName=England) and the LSOA data analyzed here. Visual comparisons are not straight forward as the plots on the government data portal present cases per day. That said, around the peak the data portal reports between  3134 - 4796 new cases each day of the week commencing 20th April (so upwards of 20,000 cases for the week in total). While the LSOA data reports 12351 cases in total for the the week commencing 20th April. 
+
+```{r}
+
+get_cases_by_week <- function(df, na.rm = TRUE){
+  df %>%
+  group_by(week_commencing) %>%
+  summarise(weekly_cases = sum(cases, na.rm = na.rm))
+}
+
+cases_per_week_national <- get_cases_by_week(tidied_data)
+cases_per_week_rest <- get_cases_by_week(rest_of_england_cases)
+cases_per_week_leeds <- get_cases_by_week(leeds_cases)
+
+
+```
+### Comparing LSOA data with headline government data from coronavirus.data.gov.uk/
+
+#### Importing headline data
+
+```{r}
+gov_headline_data <- read_csv("data_2020-Sep-07.csv")
+
+england_headline_data <- gov_headline_data %>% 
+  filter(areaName == "England") %>% 
+  arrange(date) %>% 
+  # remove redundant columns of data
+  select(-c(areaType, areaCode, areaName)) %>% 
+  mutate(week_commencing = as_date(cut(date, "week")))
+
+View(england_headline_data)
+
+eng_head_data_by_week <- england_headline_data %>% 
+  group_by(week_commencing) %>% 
+  summarise(sum(newCasesBySpecimenDate))
+
+View(eng_head_data_by_week)
+```
+#### comparing headline data with LSOA data
+
+Plotting the cases over time for both the LSOA and Government headline datasets shows considerable differences in the number of cases recorded for each week. Although the overall trends in numbers of cases are similar both datasets, i.e. movements up or down in the number cases in the headline data tends to be track by similar movements in the LSOA data.
+```{r}
+
+cases_per_week_nat_comp <- cases_per_week_national %>% 
+  left_join(eng_head_data_by_week, by = "week_commencing") %>% 
+  rename(lsoa_cases = weekly_cases, headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
+  pivot_longer(cols = c(lsoa_cases, headline_cases), names_to = "dataset", values_to = "cases")
+  
+ggplot(data = cases_per_week_nat_comp, mapping = aes(x = week_commencing, y = cases, fill = dataset)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values=c("indianred3" ,"grey")) +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  labs(x = NULL, y = "Number of cases (per week)", title = "Title") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_minimal()
+
+```
+Given the scale of the differences between the case numbers in the two datasets, I'll investigate these difference a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
+
+```{r}
+
+cases_per_week_nat_comp %>% 
+  pivot_wider(names_from = dataset, values_from = cases) %>% 
+  mutate(
+    `headline:LSOA` = headline_cases / lsoa_cases
+  ) %>% 
+  mutate(`headline:LSOA` = replace(`headline:LSOA`, `headline:LSOA` == Inf, NA)) %>% 
+  
+  ggplot(mapping = aes(x = week_commencing, y = `headline:LSOA`)) +
+  geom_line() +
+  geom_point(shape = 1, size = 2) +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  scale_y_continuous(limits = c(0, 5)) +
+  labs(x = NULL, title = "Title") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_light()
+  
+```
+
+I thought it was worth checking the differences in the number cases in the headline and LSOA datasets were not created by the processing in this notebook. So, I quickly crosschecked the total number of cases recorded in the two datasets, which again showed large differences.
+
+
+```{r}
+
+# lsoa
+crosscheck_lsoa <- imported_data
+crosscheck_lsoa$lsoa_case_tot <- crosscheck_lsoa %>%
+  select(wk_05:wk_35) %>% 
+  rowSums(na.rm = TRUE)
+
+total_cases_lsoa <- sum(crosscheck_lsoa$lsoa_case_tot)
+
+#headline data
+crosscheck_headline <- gov_headline_data %>% 
+  filter(areaName == "England") %>%  
+  filter(date == as_date("2020-08-30"))
+
+total_cases_headline <- crosscheck_headline$cumCasesBySpecimenDate  
+
+```
+
+**Total cases (lsoa dataset)**:`r str_c(toString(total_cases_lsoa), "\n")` 
+**Total cases (headline dataset)**: `r toString(total_cases_headline)`
+
+It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only `r toString(round(total_cases_lsoa / total_cases_headline * 100, digits = 1))`%  of cases recorded in the headline dataset appearing in the LSOA dataset. 
+
+## Initial plots
+```{r}
+p_leeds <- ggplot(data = cases_per_week_leeds, mapping = aes(
+    x = week_commencing , y = weekly_cases)
+  ) +
+  geom_col(fill = "#6699FF") +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  labs(x = NULL, y = "Number of cases (per week)", title = "Leeds") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_minimal()
+
+p_national <- ggplot(data = cases_per_week_rest, mapping = aes(
+    x = week_commencing , y = weekly_cases)
+  ) +
+  geom_col(fill = "grey") +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  labs(x = NULL, y = NULL, title = "England (exc. Leeds)") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_minimal()
+
+multiplot(p_leeds, p_national, cols = 2)
+# plot(p_national)
+# plot(p_leeds)
+```
+
+## Ideas
+
+* against national trends
+  - proportions of cases
+  
+* Against hotspots / places with local lockdowns https://www.instituteforgovernment.org.uk/explainers/coronavirus-local-lockdowns
+
+* correlation
+  - cases and household type https://www.nomisweb.co.uk/census/2011/ks403ew
+  - cases and self report tool symptoms https://covid.joinzoe.com/data
+  - cases and deprivation https://github.com/britishredcrosssociety/covid-19-vulnerability
+  
