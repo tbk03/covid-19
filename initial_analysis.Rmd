@@ -243,10 +243,9 @@ cases_lsoa_processing_options <- tidied_data
 for (i in seq_along((probabilities))){
   # create columns for cases by processing option
   col_name <- str_c("proc_", i, "_cases")
-  cases_lsoa_processing_options$col_name <- cases_lsoa_processing_options["cases"]
+  cases_lsoa_processing_options[col_name] <- cases_lsoa_processing_options["cases"]
   
-  #print(head(cases_lsoa_processing_options$col_name[is.na(cases_lsoa_processing_options$col_name)]))
-  
+  # replace na with c(0, 1, 2) according to probabilities defined above
   cases_lsoa_processing_options[[col_name]][is.na(cases_lsoa_processing_options[[col_name]])] <-
     sample(
       c(0,1,2),
@@ -257,14 +256,28 @@ for (i in seq_along((probabilities))){
   
 }
 
-View(cases_lsoa_processing_options)
+# tidy data
+cases_lsoa_processing_options_tidy <- cases_lsoa_processing_options %>% 
+  relocate(week_commencing, .after = week) %>% 
+  rename(source_cases = cases) %>% 
+  pivot_longer(cols = source_cases:ncol(cases_lsoa_processing_options), values_to = "cases", names_to = "processing")
 
-
-
-
+View(cases_lsoa_processing_options_tidy)
 
 
 # Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
+
+get_cases_by_week_alt <- function(df, na.rm = TRUE, ...){
+  ## ... used to pass variable names for grouping
+  df %>%
+  group_by(...) %>%
+  summarise(weekly_cases = sum(cases, na.rm = na.rm))
+}
+
+df <- get_cases_by_week_alt(cases_lsoa_processing_options_tidy, na.rm = FALSE, week_commencing, processing)
+View(df)
+
+
 
 cases_lsoa_p2 <- tidied_data 
 #   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
