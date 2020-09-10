@@ -240,9 +240,6 @@ probabilities <- list(
   probs_3 = c(0, 0, 1),
   probs_4 = c( 1 / 3, 1 / 3, 1 / 3)
 )
-str(probabilities)
-p1 <- probabilities[[4]][[1]]
-p1
 
 cases_lsoa_processing_options <- tidied_data
 
@@ -263,28 +260,37 @@ for (i in seq_along((probabilities))){
 
 }
 
-# tidy data
+# # add headline date into the tibble
+# cases_lsoa_processing_options <- cases_lsoa_processing_options %>% 
+#   left_join(y = eng_head_data_by_week, by = "week_commencing")
+
+
 cases_lsoa_processing_options_tidy <- cases_lsoa_processing_options %>%
+  # tidy data
   relocate(week_commencing, .after = week) %>%
   rename(source_cases = cases) %>%
-  pivot_longer(cols = source_cases:ncol(cases_lsoa_processing_options), values_to = "cases", names_to = "processing")
+  pivot_longer(cols = source_cases:ncol(cases_lsoa_processing_options), values_to = "cases", names_to = "processing") %>% 
+  
+  # calculate case numbers per week (for each processing approach)
+  get_cases_by_week(na.rm = TRUE, processing) %>% 
 
+  # add in headline data for comparison
+  pivot_wider(names_from = processing, values_from = weekly_cases) %>% 
+  left_join(y = eng_head_data_by_week, by = "week_commencing") %>% 
+  rename(headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
+  pivot_longer(cols = proc_1_cases:headline_cases, names_to = "source", values_to = "cases")
+
+#View(cases_lsoa_processing_options_tidy)
+
+
+#cases_per_wk_processing_options_tidy <- get_cases_by_week(cases_lsoa_processing_options_tidy, na.rm = FALSE, processing)
 View(cases_lsoa_processing_options_tidy)
 
-
 # Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
-
-# get_cases_by_week_alt <- function(df, na.rm = TRUE, ...){
-#   ## ... used to pass variable names for grouping
-#   df %>%
-#   group_by(...) %>%
-#   summarise(weekly_cases = sum(cases, na.rm = na.rm))
-# }
-# 
-df <- get_cases_by_week(cases_lsoa_processing_options_tidy, na.rm = FALSE, processing)
-View(df)
-
-
+ggplot(data = cases_lsoa_processing_options_tidy, mapping = aes(
+        x = week_commencing, y = cases, fill = source)) +
+  geom_col() +
+  facet_wrap(~ source)
 
 cases_lsoa_p2 <- tidied_data 
 #   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
