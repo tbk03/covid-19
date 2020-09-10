@@ -93,10 +93,17 @@ View(leeds_cases)
 I has quick look to see if there are any discrepancies between the UK Government covid-19 data portal (https://coronavirus.data.gov.uk/cases?areaType=nation&areaName=England) and the LSOA data analyzed here. Visual comparisons are not straight forward as the plots on the government data portal present cases per day. That said, around the peak the data portal reports between  3134 - 4796 new cases each day of the week commencing 20th April (so upwards of 20,000 cases for the week in total). While the LSOA data reports 12351 cases in total for the the week commencing 20th April. 
 
 ```{r}
+# 
+# get_cases_by_week <- function(df, na.rm = TRUE){
+#   df %>%
+#   group_by(week_commencing) %>%
+#   summarise(weekly_cases = sum(cases, na.rm = na.rm))
+# }
 
-get_cases_by_week <- function(df, na.rm = TRUE){
+get_cases_by_week <- function(df, na.rm = TRUE, ...){
+  ## ... used to pass additional variable names for grouping
   df %>%
-  group_by(week_commencing) %>%
+  group_by(week_commencing, ...) %>%
   summarise(weekly_cases = sum(cases, na.rm = na.rm))
 }
 
@@ -221,7 +228,7 @@ Regards"
 
 **An opportunity to learn about lists and iteration**
 
-```{r}
+```{r Replacing NAs - Options}
 
 # define sets of probabilities for NA (coded -99 in source data) being replaced by 0, 1 or 2
 # probabilities stored as a list of vectors.
@@ -244,7 +251,7 @@ for (i in seq_along((probabilities))){
   # create columns for cases by processing option
   col_name <- str_c("proc_", i, "_cases")
   cases_lsoa_processing_options[col_name] <- cases_lsoa_processing_options["cases"]
-  
+
   # replace na with c(0, 1, 2) according to probabilities defined above
   cases_lsoa_processing_options[[col_name]][is.na(cases_lsoa_processing_options[[col_name]])] <-
     sample(
@@ -253,13 +260,13 @@ for (i in seq_along((probabilities))){
       prob = probabilities[[i]],
       replace = TRUE
     )
-  
+
 }
 
 # tidy data
-cases_lsoa_processing_options_tidy <- cases_lsoa_processing_options %>% 
-  relocate(week_commencing, .after = week) %>% 
-  rename(source_cases = cases) %>% 
+cases_lsoa_processing_options_tidy <- cases_lsoa_processing_options %>%
+  relocate(week_commencing, .after = week) %>%
+  rename(source_cases = cases) %>%
   pivot_longer(cols = source_cases:ncol(cases_lsoa_processing_options), values_to = "cases", names_to = "processing")
 
 View(cases_lsoa_processing_options_tidy)
@@ -267,14 +274,14 @@ View(cases_lsoa_processing_options_tidy)
 
 # Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
 
-get_cases_by_week_alt <- function(df, na.rm = TRUE, ...){
-  ## ... used to pass variable names for grouping
-  df %>%
-  group_by(...) %>%
-  summarise(weekly_cases = sum(cases, na.rm = na.rm))
-}
-
-df <- get_cases_by_week_alt(cases_lsoa_processing_options_tidy, na.rm = FALSE, week_commencing, processing)
+# get_cases_by_week_alt <- function(df, na.rm = TRUE, ...){
+#   ## ... used to pass variable names for grouping
+#   df %>%
+#   group_by(...) %>%
+#   summarise(weekly_cases = sum(cases, na.rm = na.rm))
+# }
+# 
+df <- get_cases_by_week(cases_lsoa_processing_options_tidy, na.rm = FALSE, processing)
 View(df)
 
 
@@ -294,17 +301,7 @@ cases_lsoa_p2$cases[is.na(cases_lsoa_p2$cases)] <- sample(
 sum(cases_lsoa_p2$cases)
 
 ```
-```{r}
-df <- structure(list(Brand = structure(c(2L, 2L, 1L, 1L, 3L, 3L), 
-.Label = c("Dodge", 
-"Honda", "Mercedes"), class = "factor"), year = c(2010L, 2011L, 
-2010L, 2011L, 2010L, 2011L), mpg = c(30L, 28L, 20L, 23L, 22L, 
-25L), reputation = c(8.5, 8.5, 6.5, 7, 9.5, 9), Luxury = c(5, 
-5.5, 6, 6.5, NA, NA)), class = "data.frame", row.names = c(NA, -6L))
 
-vals <- seq(0.9, 1, 0.01)
-df[is.na(df)] <- sample(vals, sum(is.na(df)), replace = TRUE)
-```
 
 ```{r}
 cases_per_week_lsoa_p2 <- get_cases_by_week(cases_lsoa_p2)
