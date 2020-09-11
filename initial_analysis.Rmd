@@ -20,6 +20,11 @@ library(lubridate)
 ## Overview of notebook
 Image or table of contents?
 
+Making use of functions in external file
+
+```{r, code = readLines("functions_importing_cases.R")}
+```
+
 ## 1. Import datasets  (Covid-19 cases)
 
 Two data sets, cases:
@@ -82,6 +87,21 @@ stopifnot(num_lso * num_weeks == num_obs)
 ```
 
 ### 2.2. Tidy Headline Data
+
+
+## 3. Processing data
+
+### 3.1. Removing redudant variables
+
+### 3.2. Formatting dates to enable comparision between Headline and LSOA data
+
+### 3.3. Setting the geographic scope
+
+### 3.4. Calculating weekly case numbers
+
+## 4. Comparing the Headline and LSOA data
+
+### 5. Exploring options for -99 entries in LSOA data
 
 
 ## Focus on Leeds cases
