@@ -29,7 +29,7 @@ Two data sets, cases:
 
 Notes on data import process (LSOA data):
 
-* Initially the wk_10 column causing parsing errors because the parser in read_csv was guessing it was a logical column (as the first n rows contained NA as a value), so it was neccesary to explicitly define wk_10 as an integer column.
+* Initially the wk_10 column causing parsing errors because the parser in read_csv was guessing it was a logical column (as the first n rows contained NA as a value), so it was necessary to explicitly define wk_10 as an integer column.
 * Counts between 0 and 2 are denoted by -99", I initially treated -99 as equivalent to NA when reading in the csv. But it might be better to replace -99 with a number, possbly 1?
 
 Notes on data import process (Headline data):
@@ -44,7 +44,9 @@ imported_data = read_csv("LSOAs_latest.csv", na = c(-99, "NA"), col_types = cols
 gov_headline_data <- read_csv("data_2020-Sep-07.csv")
 ```
 
-## Tidy data Covid-19 case data
+## 2. Tidy data
+
+### 2.1. Tidy LSOA Data
 In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week). So, I pivoted the data to create year and cases variables The values of the week variable are week numbers (starting with "wk_01" from 30/12/2019). The week numbers are stored as strings with a "wk_" prefix before the week number. So, first I extract the week numbers and convert them to integers, and then calculate the date each week commences on (stored as week_commencing).     
 
 ```{r}
@@ -61,13 +63,6 @@ tidy_lsoa_data <- function(df){
 
 tidied_data <- tidy_lsoa_data(imported_data)
 
-# tidied_data <- imported_data %>% 
-#   pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
-#   
-#   mutate(
-#     week = as.integer(str_sub(week, 4, 5)),
-#     week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
-#   )
 ```
 
 Then I quickly checked for missing data, by confirming that for each lower super output  there are rows for all the weeks covered by the dataset (weeks 5 - 35 of 2020).
@@ -86,6 +81,7 @@ num_obs <- nrow(tidied_data)
 stopifnot(num_lso * num_weeks == num_obs)
 ```
 
+### 2.2. Tidy Headline Data
 
 
 ## Focus on Leeds cases
