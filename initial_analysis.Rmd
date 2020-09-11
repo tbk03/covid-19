@@ -61,41 +61,49 @@ imported_headline <- read_csv("data_2020-Sep-07.csv")
 ## 2. Tidy data
 
 ### 2.1. Tidy LSOA Data
-In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week). So, I pivoted the data to create year and cases variables The values of the week variable are week numbers (starting with "wk_01" from 30/12/2019). The week numbers are stored as strings with a "wk_" prefix before the week number. So, first I extract the week numbers and convert them to integers, and then calculate the date each week commences on (stored as week_commencing).     
+In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week).
 
-```{r}
-
-tidy_lsoa_data <- function(df){
-  df %>% 
-    pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
-    
-    mutate(
-      week = as.integer(str_sub(week, 4, 5)),
-      week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
-    )
-}
-
-tidy_lsoa <- tidy_lsoa_data(imported_lsoa)
-
+```{r, echo=FALSE}
+head(imported_lsoa)
 ```
 
-Then I quickly checked for missing data, by confirming that for each lower super output  there are rows for all the weeks covered by the dataset (weeks 5 - 35 of 2020).
+
+So, I pivoted the data to create year and cases variables The values of the week variable are week numbers (starting with "wk_01" from 30/12/2019). The week numbers are stored as strings with a "wk_" prefix before the week number. So, first I extract the week numbers and convert them to integers.  
 
 ```{r}
-number_of_distinct_values <- function(df, var_name){
-    n_distinct(df[var_name])
-}
 
-num_lso <- number_of_distinct_values(tidy_lsoa, "lsoa11_nm")
-num_weeks <- number_of_distinct_values(tidy_lsoa, "week")
+tidy_lsoa <- imported_lsoa %>% 
+    pivot_longer(cols = `wk_05`:`wk_35`, names_to = "week", values_to = "cases") %>% 
+    mutate(week = as.integer(str_sub(week, 4, 5))) %>% 
+    rename(lsoa_id = lsoa11_cd, lsoa_name = lsoa11_nm)
 
+```
+```{r, echo = FALSE}
+head(tidy_lsoa)
+```
+
+Then I quickly checked for missing data, by confirming that for each lower super output there are rows for all the weeks covered by the dataset (weeks 5 - 35 of 2020).
+
+```{r}
+num_lso <- num_distinct_values(tidy_lsoa, "lsoa_name")
+num_weeks <- num_distinct_values(tidy_lsoa, "week")
 num_obs <- nrow(tidy_lsoa)
-
 
 stopifnot(num_lso * num_weeks == num_obs)
 ```
 
 ### 2.2. Tidy Headline Data
+Already tidy 
+
+https://r4ds.had.co.nz/tidy-data.html#tidy-data-1 
+* "Each variable must have its own column.
+* Each observation must have its own row.
+* Each value must have its own cell."
+
+
+```{r, echo = FALSE}
+head(imported_headline)
+```
 
 
 ## 3. Processing data
@@ -103,6 +111,17 @@ stopifnot(num_lso * num_weeks == num_obs)
 ### 3.1. Removing redudant variables
 
 ### 3.2. Formatting dates to enable comparision between Headline and LSOA data
+
+LSOA and then calculate the date each week commences on (stored as week_commencing).   
+
+```{r}
+
+# for lsoa
+    mutate(
+      # week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
+    )
+```
+
 
 ### 3.3. Setting the geographic scope
 
