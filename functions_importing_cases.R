@@ -1,1 +1,4 @@
-1+1
+## @knitr functions
+test_function <- function(x){
+  x + 1
+}

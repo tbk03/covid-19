@@ -8,6 +8,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 ## Import packages
 ```{r message = FALSE}
 library(Rmisc)
@@ -22,8 +23,16 @@ Image or table of contents?
 
 Making use of functions in external file
 
-```{r, code = readLines("functions_importing_cases.R")}
+```{r source external files, include = FALSE}
+source("functions_importing_cases.R", local = knitr::knit_global())
 ```
+
+
+Set some notebook variables
+```{r set notebook variables, include = FALSE}
+
+```
+
 
 ## 1. Import datasets  (Covid-19 cases)
 
