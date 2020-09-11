@@ -1,6 +1,7 @@
 ---
-title: "Initial analysis"
+title: "covid-19: case data (import and processing)"
 output: html_document
+
 ---
 
 ```{r setup, include=FALSE}
@@ -15,17 +16,32 @@ library(tidyquant)
 library(ggplot2)
 library(lubridate)
 ```
-## Import Covid-19 case data for England
-Cases by Lower Super Output Area (LSOA) from https://coronavirus.data.gov.uk/about-data on 6th September 2020. 
 
-For England only. 
+## Overview of notebook
+Image or table of contents?
 
-Initially the wk_10 column causing parsing errors because the parser in read_csv was guessing it was a logical column (as the first n rows contained NA as a value), so it was neccesary to explicitly define wk_10 as an integer column.
+## 1. Import datasets  (Covid-19 cases)
 
-"Counts between 0 and 2 are denoted by -99", I initially treated -99 as equivalent to NA when reading in the csv. But it might be better to replace -99 with a number, possbly 1?
+Two data sets, cases:
+
+1. **LSOA data:** Lower Super Output Area (LSOA) from https://coronavirus.data.gov.uk/about-data on 6th September 2020. For England only. 
+2. **Headline data:** 
+
+Notes on data import process (LSOA data):
+
+* Initially the wk_10 column causing parsing errors because the parser in read_csv was guessing it was a logical column (as the first n rows contained NA as a value), so it was neccesary to explicitly define wk_10 as an integer column.
+* Counts between 0 and 2 are denoted by -99", I initially treated -99 as equivalent to NA when reading in the csv. But it might be better to replace -99 with a number, possbly 1?
+
+Notes on data import process (Headline data):
+
+* *none*
 
 ```{r message = FALSE}
+# imported_lsoa_data
 imported_data = read_csv("LSOAs_latest.csv", na = c(-99, "NA"), col_types = cols(wk_10 = col_integer()))
+
+# imported_headline_data
+gov_headline_data <- read_csv("data_2020-Sep-07.csv")
 ```
 
 ## Tidy data Covid-19 case data
@@ -118,8 +134,6 @@ cases_per_week_leeds <- get_cases_by_week(leeds_cases)
 #### Importing headline data
 
 ```{r}
-gov_headline_data <- read_csv("data_2020-Sep-07.csv")
-
 england_headline_data <- gov_headline_data %>% 
   filter(areaName == "England") %>% 
   arrange(date) %>% 
