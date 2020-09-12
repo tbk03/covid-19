@@ -12,10 +12,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Import packages
 ```{r message = FALSE}
 library(Rmisc)
-library(tidyverse)
 library(tidyquant)
 library(ggplot2)
 library(lubridate)
+library(tidyverse)
 ```
 
 ## Overview of notebook
@@ -134,10 +134,15 @@ processed_headline <- processed_headline %>%
 ```
 
 ### 3.3. Removing redudant variables
+In the lsoa data week number is now redudant, as the week commencing has been calculated. So, I removed week number from the table.
 
 In the headline data there are three variables relating to the geographic scope of each observation. Given I restricted the scope to England only, these variable are now redundant and I removed them.
 
+
 ```{r}
+processed_lsoa <- processed_lsoa %>% 
+  select(-week)
+
 processed_headline <- processed_headline %>% 
  select(-c(areaType, areaCode, areaName))
 ```
@@ -146,16 +151,42 @@ processed_headline <- processed_headline %>%
 
 ```{r}
 processed_lsoa <- processed_lsoa %>% 
-  relocate(week_commencing, .after = lsoa_name) %>% 
+  relocate(week_commencing, .after = lsoa_name) %>%
+  rename(cases_per_week = cases) %>% 
   arrange(lsoa_id, week_commencing)
 
 processed_headline <- processed_headline %>%
-  relocate(week_commencing, .after = date) %>% 
+  relocate(week_commencing, .after = date) %>%
+  rename (
+    cases_per_day = newCasesBySpecimenDate,
+    culumlative_cases = cumCasesBySpecimenDate
+  )%>% 
   arrange(date)
 ```
 
+```{r, echo = FALSE}
+head(processed_lsoa)
+head(processed_headline)
+```
 
 ### 3.5. Calculating weekly case numbers
+
+Came across the challenge of passing column names to dplyr functions, and found enquo() https://leaherb.com/pass-column-name-as-parameter-to-a-function-using-dplyr/ as   
+
+```{r}
+get_cases_per_week <- function(df, case_col, na.rm = TRUE, ...){
+  ## ... used to pass additional variable names for grouping
+  case_col <- enquo(case_col)
+  
+  df %>%
+    group_by(week_commencing, ...) %>%
+    summarise(cases_per_week = sum(!!case_col, na.rm = na.rm))
+}
+
+cpw_lsoa <- get_cases_per_week(df = processed_lsoa, case_col = cases_per_week)
+cpw_headline <- get_cases_per_week(df = processed_headline, case_col = cases_per_day)
+```
+
 
 ## 4. Comparing the Headline and LSOA data
 
