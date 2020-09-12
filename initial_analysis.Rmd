@@ -100,6 +100,9 @@ https://r4ds.had.co.nz/tidy-data.html#tidy-data-1
 * Each observation must have its own row.
 * Each value must have its own cell."
 
+```{r}
+tidy_headline <- imported_headline
+```
 
 ```{r, echo = FALSE}
 head(imported_headline)
@@ -108,24 +111,51 @@ head(imported_headline)
 
 ## 3. Processing data
 
-### 3.1. Removing redudant variables
-
-### 3.2. Formatting dates to enable comparision between Headline and LSOA data
+### 3.1. Formatting dates to enable comparision between Headline and LSOA data
 
 LSOA and then calculate the date each week commences on (stored as week_commencing).   
 
 ```{r}
 
-# for lsoa
-    mutate(
-      # week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1)
-    )
+processed_lsoa <- tidy_lsoa %>% 
+    mutate(week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1))
+
+processed_headline <- tidy_headline %>% 
+  arrange(date) %>% 
+  mutate(week_commencing = as_date(cut(date, "week")))
 ```
 
 
-### 3.3. Setting the geographic scope
+### 3.2. Setting the geographic scope
+LSOA data for England only. Headline data for the whole UK, so need to restrict to England only to enable comparision
+```{r}
+processed_headline <- processed_headline %>% 
+  filter(areaName == "England")
+```
 
-### 3.4. Calculating weekly case numbers
+### 3.3. Removing redudant variables
+
+In the headline data there are three variables relating to the geographic scope of each observation. Given I restricted the scope to England only, these variable are now redundant and I removed them.
+
+```{r}
+processed_headline <- processed_headline %>% 
+ select(-c(areaType, areaCode, areaName))
+```
+
+### 3.4. Arranging columns for readability
+
+```{r}
+processed_lsoa <- processed_lsoa %>% 
+  relocate(week_commencing, .after = lsoa_name) %>% 
+  arrange(lsoa_id, week_commencing)
+
+processed_headline <- processed_headline %>%
+  relocate(week_commencing, .after = date) %>% 
+  arrange(date)
+```
+
+
+### 3.5. Calculating weekly case numbers
 
 ## 4. Comparing the Headline and LSOA data
 
