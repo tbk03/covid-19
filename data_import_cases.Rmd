@@ -133,10 +133,10 @@ LSOA and then calculate the date each week commences on (stored as week_commenci
 
 ```{r}
 
-processed_lsoa <- tidy_lsoa %>% 
+processed_lsoa_1 <- tidy_lsoa %>% 
     mutate(week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1))
 
-processed_headline <- tidy_headline %>% 
+processed_headline_1 <- tidy_headline %>% 
   arrange(date) %>% 
   mutate(week_commencing = as_date(cut(date, "week")))
 ```
@@ -145,7 +145,7 @@ processed_headline <- tidy_headline %>%
 ### 3.2. Setting the geographic scope
 LSOA data for England only. Headline data for the whole UK, so need to restrict to England only to enable comparision
 ```{r}
-processed_headline <- processed_headline %>% 
+processed_headline_2 <- processed_headline_1 %>% 
   filter(areaName == "England")
 ```
 
@@ -156,22 +156,22 @@ In the headline data there are three variables relating to the geographic scope 
 
 
 ```{r}
-processed_lsoa <- processed_lsoa %>% 
+processed_lsoa_3 <- processed_lsoa_1 %>% 
   select(-week)
 
-processed_headline <- processed_headline %>% 
+processed_headline_3 <- processed_headline_2 %>% 
  select(-c(areaType, areaCode, areaName))
 ```
 
 ### 3.4. Arranging columns for readability
 
 ```{r}
-processed_lsoa <- processed_lsoa %>% 
+processed_lsoa_4 <- processed_lsoa_3 %>% 
   relocate(week_commencing, .after = lsoa_name) %>%
   rename(cases_per_week = cases) %>% 
   arrange(lsoa_id, week_commencing)
 
-processed_headline <- processed_headline %>%
+processed_headline_4 <- processed_headline_3 %>%
   relocate(week_commencing, .after = date) %>%
   rename (
     cases_per_day = newCasesBySpecimenDate,
@@ -181,8 +181,8 @@ processed_headline <- processed_headline %>%
 ```
 
 ```{r, echo = FALSE}
-head(processed_lsoa)
-head(processed_headline)
+head(processed_lsoa_4)
+head(processed_headline_4)
 ```
 
 ### 3.5. Calculating weekly case numbers
@@ -190,8 +190,8 @@ head(processed_headline)
 Came across the challenge of passing column names to dplyr functions, and found enquo() https://leaherb.com/pass-column-name-as-parameter-to-a-function-using-dplyr/ as   
 
 ```{r}
-cpw_lsoa <- get_cases_per_week(df = processed_lsoa, case_col = cases_per_week)
-cpw_headline <- get_cases_per_week(df = processed_headline, case_col = cases_per_day)
+cpw_lsoa <- get_cases_per_week(df = processed_lsoa_4, case_col = cases_per_week)
+cpw_headline <- get_cases_per_week(df = processed_headline_4, case_col = cases_per_day)
 
 head(cpw_lsoa)
 head(cpw_headline)
@@ -308,19 +308,20 @@ probabilities <- list(
 ```
 
 ```{r}
-processed_alt_lsoa <- tidy_lsoa
+processed_lsoa_alt <- processed_lsoa_4
+
 
 # for each set of probabilities create a new column cases in the df and label accordingly
 for (i in seq_along((probabilities))){
   # create columns for cases by processing option
   col_name <- str_c("proc_", i, "_cases")
-  processed_alt_lsoa[col_name] <- processed_alt_lsoa["cases"]
+  processed_lsoa_alt[col_name] <- processed_lsoa_alt["cases_per_week"]
 
   # replace na with c(0, 1, 2) according to probabilities defined above
-  processed_alt_lsoa[[col_name]][is.na(processed_alt_lsoa[[col_name]])] <-
+  processed_lsoa_alt[[col_name]][is.na(processed_lsoa_alt[[col_name]])] <-
     sample(
       c(0,1,2),
-      size = sum(is.na(processed_alt_lsoa[[col_name]])),
+      size = sum(is.na(processed_lsoa_alt[[col_name]])),
       prob = probabilities[[i]],
       replace = TRUE
     )
@@ -329,11 +330,11 @@ for (i in seq_along((probabilities))){
 
 ```{r}
 
-processed_alt_lsoa <- processed_alt_lsoa %>%
+processed_lsoa_alt <- processed_lsoa_alt %>%
   # tidy data
   relocate(week_commencing, .after = week) %>%
   rename(source_cases = cases) %>%
-  pivot_longer(cols = source_cases:ncol(processed_alt_lsoa), values_to = "cases", names_to = "processing") %>% 
+  pivot_longer(cols = source_cases:ncol(processed_lsoa_alt), values_to = "cases", names_to = "processing") %>% 
   
   # calculate case numbers per week (for each processing approach)
   get_cases_per_week(na.rm = TRUE, processing) #%>% 
@@ -357,16 +358,16 @@ processed_alt_lsoa <- processed_alt_lsoa %>%
 
 
 # # add headline date into the tibble
-# processed_alt_lsoa <- processed_alt_lsoa %>% 
+# processed_lsoa_alt <- processed_lsoa_alt %>% 
 #   left_join(y = eng_head_data_by_week, by = "week_commencing")
 
 
 
-#View(processed_alt_lsoa_tidy)
+#View(processed_lsoa_alt_tidy)
 
 
-#cases_per_wk_processing_options_tidy <- get_cases_by_week(processed_alt_lsoa_tidy, na.rm = FALSE, processing)
-View(processed_alt_lsoa_tidy)
+#cases_per_wk_processing_options_tidy <- get_cases_by_week(processed_lsoa_alt_tidy, na.rm = FALSE, processing)
+View(processed_lsoa_alt_tidy)
 
 # Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
 ggplot(data = processed_alt_lsoa_tidy, mapping = aes(
