@@ -1,0 +1,48 @@
+---
+title: "data_analysis_cases"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Focus on Leeds cases
+As I'm interested in Leeds in particular,  I created a tibble of Leeds case data. But also I want to compare the data for Leeds to equivalent national data for England. As the number of cases in Leeds is likely to be a very small proportion of the total number of cases, I have also create a rest of England (i.e. England - Leeds) dataset for comparision.
+
+```{r}
+
+leeds_cases <- tidy_lsoa %>%
+  filter(startsWith(lsoa11_nm, "Leeds"))
+
+rest_of_england_cases <- tidy_lsoa %>% 
+  filter(!startsWith(lsoa11_nm, "Leeds"))
+
+View(leeds_cases)
+
+```
+
+## Initial plots
+```{r}
+p_leeds <- ggplot(data = cases_per_week_leeds, mapping = aes(
+    x = week_commencing , y = weekly_cases)
+  ) +
+  geom_col(fill = "#6699FF") +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  labs(x = NULL, y = "Number of cases (per week)", title = "Leeds") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_minimal()
+
+p_national <- ggplot(data = cases_per_week_rest, mapping = aes(
+    x = week_commencing , y = weekly_cases)
+  ) +
+  geom_col(fill = "grey") +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  labs(x = NULL, y = NULL, title = "England (exc. Leeds)") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_minimal()
+
+multiplot(p_leeds, p_national, cols = 2)
+# plot(p_national)
+# plot(p_leeds)
+```

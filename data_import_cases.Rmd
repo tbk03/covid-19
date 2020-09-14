@@ -44,18 +44,34 @@ Two data sets, cases:
 Notes on data import process (LSOA data):
 
 * Initially the wk_10 column causing parsing errors because the parser in read_csv was guessing it was a logical column (as the first n rows contained NA as a value), so it was necessary to explicitly define wk_10 as an integer column.
-* Counts between 0 and 2 are denoted by -99", I initially treated -99 as equivalent to NA when reading in the csv. But it might be better to replace -99 with a number, possbly 1?
+* Counts between 0 and 2 are denoted by -99". I imported the csv initially without any explicit processing of NA values, in order to confirm that there are no NA values already in the dataset. I then re-imported the data specifying that -99 should be treated as equivalent to NA when reading in the csv. 
 
 Notes on data import process (Headline data):
 
 * *none*
 
-```{r message = FALSE}
+```{r results = hide, message = FALSE}
 # imported_lsoa_data
+
+imported_lsoa = read_csv("LSOAs_latest.csv", col_types = cols(wk_10 = col_integer()))
+
+# check for na values in the imported
+na_count_lsoa <- imported_lsoa %>% 
+  map(~sum(is.na(.)))
+stopifnot(na_count_lsoa == 0)
+
+
+# re-import the data converting -99 values to NA 
 imported_lsoa = read_csv("LSOAs_latest.csv", na = c(-99, "NA"), col_types = cols(wk_10 = col_integer()))
 
 # imported_headline_data
 imported_headline <- read_csv("data_2020-Sep-07.csv")
+
+# check for na values in imported data
+na_count_headline <- imported_headline %>% 
+  map(~sum(is.na(.)))
+stopifnot(na_count_headline == 0)
+
 ```
 
 ## 2. Tidy data
@@ -176,6 +192,9 @@ Came across the challenge of passing column names to dplyr functions, and found 
 ```{r}
 cpw_lsoa <- get_cases_per_week(df = processed_lsoa, case_col = cases_per_week)
 cpw_headline <- get_cases_per_week(df = processed_headline, case_col = cases_per_day)
+
+head(cpw_lsoa)
+head(cpw_headline)
 ```
 ## 3.6. Combine LSOA and Headline case per week data
 
@@ -188,11 +207,14 @@ cpw <- cpw_lsoa %>%
   left_join(cpw_headline, by = "week_commencing", suffix = c("_lsoa", "_headline")) %>% 
   pivot_longer(cols = c(cases_per_week_lsoa, cases_per_week_headline),
                names_to = "dataset", values_to = "cases_per_week")
+
+head(cpw)
 ```
 
 
 ## 4. Comparing the Headline and LSOA data
 
+### 4.1. Initial comparison
 Plotting the cases over time for both the LSOA and Government headline datasets shows considerable differences in the number of cases recorded for each week. Although the overall trends in numbers of cases are similar both datasets, i.e. movements up or down in the number cases in the headline data tends to be track by similar movements in the LSOA data.
 
 ```{r}
@@ -210,7 +232,7 @@ plot_1 <- cpw_plot(cpw)
 
 plot(plot_1)
 ```
-Given the scale of the differences between the case numbers in the two datasets, I'll investigate these difference a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
+Given the scale of the differences between the case numbers in the two datasets, I'll investigate a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
 
 ```{r}
 
@@ -233,26 +255,149 @@ plot_2 <- ggplot(data = cpw, mapping = aes(x = week_commencing, y = `headline:LS
   theme_light()
 
 plot(plot_2)
-  
+
+head(cpw)  
 ```
 
-### 5. Exploring options for -99 entries in LSOA data
+I thought it was worth checking the differences in the number cases in the headline and LSOA datasets were not created by the processing above in this notebook. So, I quickly crosschecked the total number of cases recorded in the two datasets, which again showed large differences.
 
-
-## Focus on Leeds cases
-As I'm interested in Leeds in particular,  I created a tibble of Leeds case data. But also I want to compare the data for Leeds to equivalent national data for England. As the number of cases in Leeds is likely to be a very small proportion of the total number of cases, I have also create a rest of England (i.e. England - Leeds) dataset for comparision.
 
 ```{r}
 
-leeds_cases <- tidy_lsoa %>%
-  filter(startsWith(lsoa11_nm, "Leeds"))
+# lsoa
+crosscheck_lsoa <- imported_lsoa
+crosscheck_lsoa$lsoa_case_tot <- crosscheck_lsoa %>%
+  select(wk_05:wk_35) %>% 
+  rowSums(na.rm = TRUE)
 
-rest_of_england_cases <- tidy_lsoa %>% 
-  filter(!startsWith(lsoa11_nm, "Leeds"))
+total_cases_lsoa <- sum(crosscheck_lsoa$lsoa_case_tot)
 
-View(leeds_cases)
+#headline data
+crosscheck_headline <- imported_headline %>% 
+  filter(areaName == "England") %>%  
+  filter(date == as_date("2020-08-30"))
+
+total_cases_headline <- crosscheck_headline$cumCasesBySpecimenDate  
 
 ```
+
+**Total cases (lsoa dataset)**:`r str_c(toString(total_cases_lsoa), "\n")` 
+**Total cases (headline dataset)**: `r toString(total_cases_headline)`
+
+There are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only `r toString(round(total_cases_lsoa / total_cases_headline * 100, digits = 1))`%  of cases recorded in the headline dataset appearing in the LSOA dataset. So, I emailed the data owners to ask for more information on the differences in case numbers between the LSOA and headline datasets and received the following reply.
+
+09/09/2020 from coronavirus-tracker@phe.gov.uk
+
+"Hi Chris,
+
+We have to suppress the number of cases if they are below 3, hence the LSOA file will not show if there were 1 or 2 cases in an area and they will be missed in the totals.
+
+Regards"
+
+### 4.2. Exploring options for -99 entries in LSOA data
+
+
+```{r}
+probabilities <- list(
+  #         c(p(0), p(1), p(2))
+  probs_1 = c(1, 0, 0),
+  probs_2 = c(0, 1, 0),
+  probs_3 = c(0, 0, 1),
+  probs_4 = c( 1 / 3, 1 / 3, 1 / 3)
+)
+```
+
+```{r}
+processed_alt_lsoa <- tidy_lsoa
+
+# for each set of probabilities create a new column cases in the df and label accordingly
+for (i in seq_along((probabilities))){
+  # create columns for cases by processing option
+  col_name <- str_c("proc_", i, "_cases")
+  processed_alt_lsoa[col_name] <- processed_alt_lsoa["cases"]
+
+  # replace na with c(0, 1, 2) according to probabilities defined above
+  processed_alt_lsoa[[col_name]][is.na(processed_alt_lsoa[[col_name]])] <-
+    sample(
+      c(0,1,2),
+      size = sum(is.na(processed_alt_lsoa[[col_name]])),
+      prob = probabilities[[i]],
+      replace = TRUE
+    )
+}
+```
+
+```{r}
+
+processed_alt_lsoa <- processed_alt_lsoa %>%
+  # tidy data
+  relocate(week_commencing, .after = week) %>%
+  rename(source_cases = cases) %>%
+  pivot_longer(cols = source_cases:ncol(processed_alt_lsoa), values_to = "cases", names_to = "processing") %>% 
+  
+  # calculate case numbers per week (for each processing approach)
+  get_cases_per_week(na.rm = TRUE, processing) #%>% 
+
+  # add in headline data for comparison
+  # pivot_wider(names_from = processing, values_from = weekly_cases) %>% 
+  # left_join(y = eng_head_data_by_week, by = "week_commencing") %>% 
+  # rename(headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
+  # pivot_longer(cols = proc_1_cases:headline_cases, names_to = "source", values_to = "cases")
+
+```
+
+
+```{r Replacing NAs - Options}
+
+# define sets of probabilities for NA (coded -99 in source data) being replaced by 0, 1 or 2
+# probabilities stored as a list of vectors.
+
+
+
+
+
+# # add headline date into the tibble
+# processed_alt_lsoa <- processed_alt_lsoa %>% 
+#   left_join(y = eng_head_data_by_week, by = "week_commencing")
+
+
+
+#View(processed_alt_lsoa_tidy)
+
+
+#cases_per_wk_processing_options_tidy <- get_cases_by_week(processed_alt_lsoa_tidy, na.rm = FALSE, processing)
+View(processed_alt_lsoa_tidy)
+
+# Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
+ggplot(data = processed_alt_lsoa_tidy, mapping = aes(
+        x = week_commencing, y = cases, fill = source)) +
+  geom_col() +
+  facet_wrap(~ source)
+
+cases_lsoa_p2 <- tidy_lsoa 
+#   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
+
+cases_lsoa_p2$cases[is.na(cases_lsoa_p2$cases)] <- sample(
+  c(0,1,2), 
+  size=sum(is.na(cases_lsoa_p2$cases)),
+  prob = c(0.5, 0.25, 0.25),
+  replace=TRUE
+  )
+
+#sample(c(0, 1, 2), 1, replace = TRUE)
+
+sum(cases_lsoa_p2$cases)
+
+```
+
+
+```{r}
+cases_per_week_lsoa_p2 <- get_cases_by_week(cases_lsoa_p2)
+cases_per_week_nat_comp_p2 <- cases_per_week_comparision(cases_per_week_lsoa_p2, eng_head_data_by_week)
+cases_per_week_comp_plot(cases_per_week_nat_comp_p2)
+```
+
+
 
 
 ## Cases by week
@@ -325,159 +470,21 @@ cases_per_week_nat_comp <- cases_per_week_comparision(cases_per_week_national, e
 ```
 
 
-I thought it was worth checking the differences in the number cases in the headline and LSOA datasets were not created by the processing in this notebook. So, I quickly crosschecked the total number of cases recorded in the two datasets, which again showed large differences.
 
 
-```{r}
 
-# lsoa
-crosscheck_lsoa <- imported_lsoa
-crosscheck_lsoa$lsoa_case_tot <- crosscheck_lsoa %>%
-  select(wk_05:wk_35) %>% 
-  rowSums(na.rm = TRUE)
 
-total_cases_lsoa <- sum(crosscheck_lsoa$lsoa_case_tot)
-
-#headline data
-crosscheck_headline <- imported_headline %>% 
-  filter(areaName == "England") %>%  
-  filter(date == as_date("2020-08-30"))
-
-total_cases_headline <- crosscheck_headline$cumCasesBySpecimenDate  
-
-```
-
-**Total cases (lsoa dataset)**:`r str_c(toString(total_cases_lsoa), "\n")` 
-**Total cases (headline dataset)**: `r toString(total_cases_headline)`
-
-It appears there are major differences in the ways in which cases are recorded in the headline and lsoa datasets. With only `r toString(round(total_cases_lsoa / total_cases_headline * 100, digits = 1))`%  of cases recorded in the headline dataset appearing in the LSOA dataset. So, I emailed the contact on the https://coronavirus.data.gov.uk website to ask for further advice, and received the following reply.
-
-09/09/2020 from coronavirus-tracker@phe.gov.uk
-
-"Hi Chris,
-
-We have to suppress the number of cases if they are below 3, hence the LSOA file will not show if there were 1 or 2 cases in an area and they will be missed in the totals.
-
-Regards"
 
 
 **An opportunity to learn about lists and iteration**
 
-```{r Replacing NAs - Options}
-
-# define sets of probabilities for NA (coded -99 in source data) being replaced by 0, 1 or 2
-# probabilities stored as a list of vectors.
-
-probabilities <- list(
-  #         c(p(0), p(1), p(2))
-  probs_1 = c(1, 0, 0),
-  probs_2 = c(0, 1, 0),
-  probs_3 = c(0, 0, 1),
-  probs_4 = c( 1 / 3, 1 / 3, 1 / 3)
-)
-
-cases_lsoa_processing_options <- tidy_lsoa
-
-# for each set of probabilities create a new column cases in the df and label accordingly
-for (i in seq_along((probabilities))){
-  # create columns for cases by processing option
-  col_name <- str_c("proc_", i, "_cases")
-  cases_lsoa_processing_options[col_name] <- cases_lsoa_processing_options["cases"]
-
-  # replace na with c(0, 1, 2) according to probabilities defined above
-  cases_lsoa_processing_options[[col_name]][is.na(cases_lsoa_processing_options[[col_name]])] <-
-    sample(
-      c(0,1,2),
-      size = sum(is.na(cases_lsoa_processing_options[[col_name]])),
-      prob = probabilities[[i]],
-      replace = TRUE
-    )
-
-}
-
-# # add headline date into the tibble
-# cases_lsoa_processing_options <- cases_lsoa_processing_options %>% 
-#   left_join(y = eng_head_data_by_week, by = "week_commencing")
-
-
-cases_lsoa_processing_options_tidy <- cases_lsoa_processing_options %>%
-  # tidy data
-  relocate(week_commencing, .after = week) %>%
-  rename(source_cases = cases) %>%
-  pivot_longer(cols = source_cases:ncol(cases_lsoa_processing_options), values_to = "cases", names_to = "processing") %>% 
-  
-  # calculate case numbers per week (for each processing approach)
-  get_cases_by_week(na.rm = TRUE, processing) %>% 
-
-  # add in headline data for comparison
-  pivot_wider(names_from = processing, values_from = weekly_cases) %>% 
-  left_join(y = eng_head_data_by_week, by = "week_commencing") %>% 
-  rename(headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
-  pivot_longer(cols = proc_1_cases:headline_cases, names_to = "source", values_to = "cases")
-
-#View(cases_lsoa_processing_options_tidy)
-
-
-#cases_per_wk_processing_options_tidy <- get_cases_by_week(cases_lsoa_processing_options_tidy, na.rm = FALSE, processing)
-View(cases_lsoa_processing_options_tidy)
-
-# Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
-ggplot(data = cases_lsoa_processing_options_tidy, mapping = aes(
-        x = week_commencing, y = cases, fill = source)) +
-  geom_col() +
-  facet_wrap(~ source)
-
-cases_lsoa_p2 <- tidy_lsoa 
-#   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
-
-cases_lsoa_p2$cases[is.na(cases_lsoa_p2$cases)] <- sample(
-  c(0,1,2), 
-  size=sum(is.na(cases_lsoa_p2$cases)),
-  prob = c(0.5, 0.25, 0.25),
-  replace=TRUE
-  )
-
-#sample(c(0, 1, 2), 1, replace = TRUE)
-
-sum(cases_lsoa_p2$cases)
-
-```
-
 
 ```{r}
-cases_per_week_lsoa_p2 <- get_cases_by_week(cases_lsoa_p2)
-cases_per_week_nat_comp_p2 <- cases_per_week_comparision(cases_per_week_lsoa_p2, eng_head_data_by_week)
-cases_per_week_comp_plot(cases_per_week_nat_comp_p2)
-```
-```{r}
 
 ```
 
 
-## Initial plots
-```{r}
-p_leeds <- ggplot(data = cases_per_week_leeds, mapping = aes(
-    x = week_commencing , y = weekly_cases)
-  ) +
-  geom_col(fill = "#6699FF") +
-  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
-  labs(x = NULL, y = "Number of cases (per week)", title = "Leeds") +
-  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
-  theme_minimal()
 
-p_national <- ggplot(data = cases_per_week_rest, mapping = aes(
-    x = week_commencing , y = weekly_cases)
-  ) +
-  geom_col(fill = "grey") +
-  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
-  labs(x = NULL, y = NULL, title = "England (exc. Leeds)") +
-  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
-  theme_minimal()
-
-multiplot(p_leeds, p_national, cols = 2)
-# plot(p_national)
-# plot(p_leeds)
-```
 
 ## Ideas
 
