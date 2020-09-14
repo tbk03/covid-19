@@ -174,21 +174,67 @@ head(processed_headline)
 Came across the challenge of passing column names to dplyr functions, and found enquo() https://leaherb.com/pass-column-name-as-parameter-to-a-function-using-dplyr/ as   
 
 ```{r}
-get_cases_per_week <- function(df, case_col, na.rm = TRUE, ...){
-  ## ... used to pass additional variable names for grouping
-  case_col <- enquo(case_col)
-  
-  df %>%
-    group_by(week_commencing, ...) %>%
-    summarise(cases_per_week = sum(!!case_col, na.rm = na.rm))
-}
-
 cpw_lsoa <- get_cases_per_week(df = processed_lsoa, case_col = cases_per_week)
 cpw_headline <- get_cases_per_week(df = processed_headline, case_col = cases_per_day)
+```
+## 3.6. Combine LSOA and Headline case per week data
+
+LSOA dataset has few weeks, so use left as not interested in headline data where there is no lsoa data for comparison.
+
+Having combined the datasets, the dataframe needs tidying ahead of plotting.
+
+```{r}
+cpw <- cpw_lsoa %>% 
+  left_join(cpw_headline, by = "week_commencing", suffix = c("_lsoa", "_headline")) %>% 
+  pivot_longer(cols = c(cases_per_week_lsoa, cases_per_week_headline),
+               names_to = "dataset", values_to = "cases_per_week")
 ```
 
 
 ## 4. Comparing the Headline and LSOA data
+
+Plotting the cases over time for both the LSOA and Government headline datasets shows considerable differences in the number of cases recorded for each week. Although the overall trends in numbers of cases are similar both datasets, i.e. movements up or down in the number cases in the headline data tends to be track by similar movements in the LSOA data.
+
+```{r}
+cpw_plot <- function(df){
+  ggplot(data = df, mapping = aes(x = week_commencing, y = cases_per_week, fill = dataset)) +
+    geom_col(position = "dodge") +
+    scale_fill_manual(values=c("indianred3" ,"grey")) +
+    scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+    labs(x = NULL, y = "Number of cases (per week)", title = "Title") +
+    coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+    theme_minimal()
+}
+
+plot_1 <- cpw_plot(cpw)
+
+plot(plot_1)
+```
+Given the scale of the differences between the case numbers in the two datasets, I'll investigate these difference a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
+
+```{r}
+
+cpw <- cpw %>% 
+  pivot_wider(names_from = dataset, values_from = cases_per_week) %>% 
+  mutate(
+    `headline:LSOA` = cases_per_week_headline / cases_per_week_lsoa
+  ) %>% 
+  mutate(`headline:LSOA` = replace(`headline:LSOA`, `headline:LSOA` == Inf, NA)) %>% 
+  pivot_longer(cols = c(cases_per_week_lsoa, cases_per_week_headline),
+               names_to = "dataset", values_to = "cases_per_week")
+  
+plot_2 <- ggplot(data = cpw, mapping = aes(x = week_commencing, y = `headline:LSOA`)) +
+  geom_line() +
+  geom_point(shape = 1, size = 2) +
+  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
+  scale_y_continuous(limits = c(0, 5)) +
+  labs(x = NULL, title = "Title") +
+  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
+  theme_light()
+
+plot(plot_2)
+  
+```
 
 ### 5. Exploring options for -99 entries in LSOA data
 
@@ -256,7 +302,7 @@ View(eng_head_data_by_week)
 ```
 #### comparing headline data with LSOA data
 
-Plotting the cases over time for both the LSOA and Government headline datasets shows considerable differences in the number of cases recorded for each week. Although the overall trends in numbers of cases are similar both datasets, i.e. movements up or down in the number cases in the headline data tends to be track by similar movements in the LSOA data.
+
 ```{r}
 
 cases_per_week_comparision <- function(lsoa_df, headline_df){
@@ -274,40 +320,10 @@ cases_per_week_nat_comp <- cases_per_week_comparision(cases_per_week_national, e
 #   pivot_longer(cols = c(lsoa_cases, headline_cases), names_to = "dataset", values_to = "cases")
   
 
-cases_per_week_comp_plot <- function(df){
-  ggplot(data = df, mapping = aes(x = week_commencing, y = cases, fill = dataset)) +
-  geom_col(position = "dodge") +
-  scale_fill_manual(values=c("indianred3" ,"grey")) +
-  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
-  labs(x = NULL, y = "Number of cases (per week)", title = "Title") +
-  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
-  theme_minimal()
-}
 
-cases_per_week_comp_plot(cases_per_week_nat_comp)
 
 ```
-Given the scale of the differences between the case numbers in the two datasets, I'll investigate these difference a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
 
-```{r}
-
-cases_per_week_nat_comp %>% 
-  pivot_wider(names_from = dataset, values_from = cases) %>% 
-  mutate(
-    `headline:LSOA` = headline_cases / lsoa_cases
-  ) %>% 
-  mutate(`headline:LSOA` = replace(`headline:LSOA`, `headline:LSOA` == Inf, NA)) %>% 
-  
-  ggplot(mapping = aes(x = week_commencing, y = `headline:LSOA`)) +
-  geom_line() +
-  geom_point(shape = 1, size = 2) +
-  scale_x_date(date_breaks = "8 weeks", date_labels = "%d %b") +
-  scale_y_continuous(limits = c(0, 5)) +
-  labs(x = NULL, title = "Title") +
-  coord_x_date(xlim = c("2020-03-02", "2020-08-24")) +
-  theme_light()
-  
-```
 
 I thought it was worth checking the differences in the number cases in the headline and LSOA datasets were not created by the processing in this notebook. So, I quickly crosschecked the total number of cases recorded in the two datasets, which again showed large differences.
 
