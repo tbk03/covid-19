@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 .Ruserdata
+tibble_printing_test.Rmd
+tibble_printing_test.html

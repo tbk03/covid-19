@@ -1,7 +1,8 @@
 ---
 title: "covid-19: case data (import and processing)"
-output: html_document
-
+output: 
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -79,7 +80,7 @@ stopifnot(na_count_headline == 0)
 ### 2.1. Tidy LSOA Data
 In the source data the column names (wk_05 - wk_35) are not variables, rather they are observations for a variable (week).
 
-```{r, echo=FALSE}
+```{r, df_print = tibble, echo=FALSE}
 head(imported_lsoa)
 ```
 
