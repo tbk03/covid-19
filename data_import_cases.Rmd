@@ -50,7 +50,7 @@ Notes on data import process (Headline data):
 
 * *none*
 
-```{r results = hide, message = FALSE}
+```{r results = "hide", message = FALSE}
 # imported_lsoa_data
 
 imported_lsoa = read_csv("LSOAs_latest.csv", col_types = cols(wk_10 = col_integer()))
@@ -373,102 +373,6 @@ ggplot(data = cpw_lsoa_alt, mapping = aes(
 # sum(cases_lsoa_p2$cases)
 
 ```
-
-
-```{r}
-cases_per_week_lsoa_p2 <- get_cases_by_week(cases_lsoa_p2)
-cases_per_week_nat_comp_p2 <- cases_per_week_comparision(cases_per_week_lsoa_p2, eng_head_data_by_week)
-cases_per_week_comp_plot(cases_per_week_nat_comp_p2)
-```
-
-
-
-
-## Cases by week
-
-I has quick look to see if there are any discrepancies between the UK Government covid-19 data portal (https://coronavirus.data.gov.uk/cases?areaType=nation&areaName=England) and the LSOA data analyzed here. Visual comparisons are not straight forward as the plots on the government data portal present cases per day. That said, around the peak the data portal reports between  3134 - 4796 new cases each day of the week commencing 20th April (so upwards of 20,000 cases for the week in total). While the LSOA data reports 12351 cases in total for the the week commencing 20th April. 
-
-```{r}
-# 
-# get_cases_by_week <- function(df, na.rm = TRUE){
-#   df %>%
-#   group_by(week_commencing) %>%
-#   summarise(weekly_cases = sum(cases, na.rm = na.rm))
-# }
-
-get_cases_by_week <- function(df, na.rm = TRUE, ...){
-  ## ... used to pass additional variable names for grouping
-  df %>%
-  group_by(week_commencing, ...) %>%
-  summarise(weekly_cases = sum(cases, na.rm = na.rm))
-}
-
-cases_per_week_national <- get_cases_by_week(tidy_lsoa)
-cases_per_week_rest <- get_cases_by_week(rest_of_england_cases)
-cases_per_week_leeds <- get_cases_by_week(leeds_cases)
-
-
-```
-### Comparing LSOA data with headline government data from coronavirus.data.gov.uk/
-
-#### Importing headline data
-
-```{r}
-england_headline_data <- imported_headline %>% 
-  filter(areaName == "England") %>% 
-  arrange(date) %>% 
-  # remove redundant columns of data
-  select(-c(areaType, areaCode, areaName)) %>% 
-  mutate(week_commencing = as_date(cut(date, "week")))
-
-View(england_headline_data)
-
-eng_head_data_by_week <- england_headline_data %>% 
-  group_by(week_commencing) %>% 
-  summarise(sum(newCasesBySpecimenDate))
-
-View(eng_head_data_by_week)
-```
-#### comparing headline data with LSOA data
-
-
-```{r}
-
-cases_per_week_comparision <- function(lsoa_df, headline_df){
-  lsoa_df %>% 
-  left_join(headline_df, by = "week_commencing") %>% 
-  rename(lsoa_cases = weekly_cases, headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
-  pivot_longer(cols = c(lsoa_cases, headline_cases), names_to = "dataset", values_to = "cases")
-}
-
-cases_per_week_nat_comp <- cases_per_week_comparision(cases_per_week_national, eng_head_data_by_week) 
-
-# cases_per_week_nat_comp <- cases_per_week_national %>% 
-#   left_join(eng_head_data_by_week, by = "week_commencing") %>% 
-#   rename(lsoa_cases = weekly_cases, headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
-#   pivot_longer(cols = c(lsoa_cases, headline_cases), names_to = "dataset", values_to = "cases")
-  
-
-
-
-```
-
-
-
-
-
-
-
-
-**An opportunity to learn about lists and iteration**
-
-
-```{r}
-
-```
-
-
-
 
 ## Ideas
 
