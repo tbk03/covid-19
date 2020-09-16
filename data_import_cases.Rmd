@@ -310,7 +310,6 @@ probabilities <- list(
 ```{r}
 processed_lsoa_alt <- processed_lsoa
 
-
 # for each set of probabilities create a new column cases in the df and label accordingly
 for (i in seq_along((probabilities))){
   # create columns for cases by processing option
@@ -328,68 +327,50 @@ for (i in seq_along((probabilities))){
   
   processed_lsoa_alt[col_name] <- column
 }
+
+head(processed_lsoa_alt)
+
+```
+```{r}
+# tidy data
+processed_lsoa_alt <- processed_lsoa_alt %>% 
+  pivot_longer(cols = cases:ncol(processed_lsoa_alt), 
+               values_to = "cases", 
+               names_to = "processing")
+
+head(processed_lsoa_alt)
 ```
 
 ```{r}
 
 cpw_lsoa_alt <- processed_lsoa_alt %>%
-  # tidy data
-  pivot_longer(cols = cases:ncol(processed_lsoa_alt), 
-               values_to = "cases", 
-               names_to = "processing") %>% 
-  
   # calculate case numbers per week (for each processing approach)
   get_cases_per_week(case_col = cases, na.rm = TRUE, processing) #%>% 
 
-  # add in headline data for comparison
-  # pivot_wider(names_from = processing, values_from = weekly_cases) %>% 
-  # left_join(y = eng_head_data_by_week, by = "week_commencing") %>% 
-  # rename(headline_cases = `sum(newCasesBySpecimenDate)`) %>% 
-  # pivot_longer(cols = proc_1_cases:headline_cases, names_to = "source", values_to = "cases")
-
+head(cpw_lsoa_alt)
 ```
 
 
 ```{r Replacing NAs - Options}
-
-# define sets of probabilities for NA (coded -99 in source data) being replaced by 0, 1 or 2
-# probabilities stored as a list of vectors.
-
-
-
-
-
-# # add headline date into the tibble
-# processed_lsoa_alt <- processed_lsoa_alt %>% 
-#   left_join(y = eng_head_data_by_week, by = "week_commencing")
-
-
-
-#View(processed_lsoa_alt_tidy)
-
-
-#cases_per_wk_processing_options_tidy <- get_cases_by_week(processed_lsoa_alt_tidy, na.rm = FALSE, processing)
-View(processed_lsoa_alt_tidy)
-
 # Facet plot the alternative approaches to processing NA (coded as -99 in source data)values
-ggplot(data = processed_alt_lsoa_tidy, mapping = aes(
-        x = week_commencing, y = cases, fill = source)) +
+ggplot(data = cpw_lsoa_alt, mapping = aes(
+        x = week_commencing, y = cases_per_week, fill = processing)) +
   geom_col() +
-  facet_wrap(~ source)
+  facet_wrap(~ processing)
 
-cases_lsoa_p2 <- tidy_lsoa 
-#   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
-
-cases_lsoa_p2$cases[is.na(cases_lsoa_p2$cases)] <- sample(
-  c(0,1,2), 
-  size=sum(is.na(cases_lsoa_p2$cases)),
-  prob = c(0.5, 0.25, 0.25),
-  replace=TRUE
-  )
-
-#sample(c(0, 1, 2), 1, replace = TRUE)
-
-sum(cases_lsoa_p2$cases)
+# cases_lsoa_p2 <- tidy_lsoa 
+# #   mutate(cases = replace_na(cases, sample(0:2, 1, replace = TRUE, prob = c(0.6, 0.25, 0.15))))
+# 
+# cases_lsoa_p2$cases[is.na(cases_lsoa_p2$cases)] <- sample(
+#   c(0,1,2), 
+#   size=sum(is.na(cases_lsoa_p2$cases)),
+#   prob = c(0.5, 0.25, 0.25),
+#   replace=TRUE
+#   )
+# 
+# #sample(c(0, 1, 2), 1, replace = TRUE)
+# 
+# sum(cases_lsoa_p2$cases)
 
 ```
 
