@@ -306,9 +306,11 @@ probabilities <- list(
   probs_3 = c(0, 0, 1),
   probs_4 = c( 1 / 3, 1 / 3, 1 / 3)
 )
+
 ```
 
 ```{r}
+
 processed_lsoa_alt <- processed_lsoa
 
 # for each set of probabilities create a new column cases in the df and label accordingly
@@ -317,7 +319,7 @@ for (i in seq_along((probabilities))){
   col_name <- str_c("cases_alt_p_", i)
 
   # replace na with c(0, 1, 2) according to probabilities defined above
-  column <- processed_lsoa_alt[["cases"]] 
+  column <- processed_lsoa_alt[["cases"]]
   column[is.na(column)] <-
     sample(
       c(0,1,2),
@@ -325,13 +327,55 @@ for (i in seq_along((probabilities))){
       prob = probabilities[[i]],
       replace = TRUE
     )
-  
+
   processed_lsoa_alt[col_name] <- column
 }
 
 head(processed_lsoa_alt)
 
 ```
+
+
+An unsuccessful attempt at a functional approach to the fill in the nas in the lsoa dataset.
+```{r}
+# lsoa_na_replace <- function(cases, p){
+#   
+#   # replace na with c(0, 1, 2) according to probabilities in p
+#   cases[is.na(cases)] <-
+#     sample(
+#       c(0,1,2),
+#       size = sum(is.na(cases)),
+#       prob = p,
+#       replace = TRUE
+#     )
+#   
+#   return(cases)
+# }
+# 
+# 
+# lsoa_na_options <- function(df, p){
+# 
+#   # create columns for cases by processing option
+#   col_name <- str_c("cases_", names(p)[1])
+#   df[col_name] <- lsoa_na_replace(df[["cases"]], p[[1]])
+#   
+#   return(df)
+# 
+# }
+# 
+# processed_lsoa_alt <- processed_lsoa
+# 
+# probabilities %>% 
+#   map(lsoa_na_options, df = processed_lsoa_alt)
+# 
+# 
+# # processed_lsoa_alt <- lsoa_na_options(processed_lsoa_alt, probabilities)
+# # str(processed_lsoa_alt)
+
+
+```
+
+
 ```{r}
 # tidy data
 processed_lsoa_alt <- processed_lsoa_alt %>% 
