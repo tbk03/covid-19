@@ -17,6 +17,8 @@ library(tidyquant)
 library(ggplot2)
 library(lubridate)
 library(tidyverse)
+library(dbplyr)
+library(DBI)
 ```
 
 ## Overview of notebook
@@ -416,6 +418,19 @@ ggplot(data = cpw_lsoa_alt, mapping = aes(
 # sum(cases_lsoa_p2$cases)
 
 ```
+https://cran.r-project.org/web/packages/RSQLite/vignettes/RSQLite.html
+
+
+```{r}
+covid_19_db <- dbConnect(RSQLite::SQLite(), "covid-19_db.sqlite")
+dbWriteTable(covid_19_db, "cpw", cpw)
+
+dbGetQuery(covid_19_db, "SELECT * FROM cpw")
+
+dbDisconnect(mydb)
+#unlink("my-db.sqlite")
+```
+
 
 ## Ideas
 
@@ -428,4 +443,7 @@ ggplot(data = cpw_lsoa_alt, mapping = aes(
   - cases and household type https://www.nomisweb.co.uk/census/2011/ks403ew
   - cases and self report tool symptoms https://covid.joinzoe.com/data
   - cases and deprivation https://github.com/britishredcrosssociety/covid-19-vulnerability
+
+* NHS Digital open data sets https://digital.nhs.uk/dashboards
+
   
