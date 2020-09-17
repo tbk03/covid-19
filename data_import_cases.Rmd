@@ -130,7 +130,7 @@ head(imported_headline)
 
 ### 3.1. Formatting dates to enable comparision between Headline and LSOA data
 
-LSOA and then calculate the date each week commences on (stored as week_commencing).   
+Dates are represented in different ways in the two datasets. So, some processing is required. In the case of the lsoa dataset to convert week numbers to dates on which each week commences. In the case of the headline dataset, which reports daily case numbers, to add a variable week_commencing which will allow the data to be grouped week later in the notebook. 
 
 ```{r}
 
@@ -144,16 +144,14 @@ processed_headline <- tidy_headline %>%
 
 
 ### 3.2. Setting the geographic scope
-LSOA data for England only. Headline data for the whole UK, so need to restrict to England only to enable comparision
+The LSOA data available of the [Public Health England Website](https://coronavirus.data.gov.uk/about-data) is for England only. The headline data, presented by the same website, covers the whole of the UK. So, I filter the headline data to give the same geographic scope (England only).
 ```{r}
 processed_headline <- processed_headline %>% 
   filter(areaName == "England")
 ```
 
 ### 3.3. Removing redudant variables
-In the lsoa data week number is now redudant, as the week commencing has been calculated. So, I removed week number from the table.
-
-In the headline data there are three variables relating to the geographic scope of each observation. Given I restricted the scope to England only, these variable are now redundant and I removed them.
+In the lsoa dataset the `week` variable is now redundant, as the week commencing has been calculated. So, I removed it number from the table. In the headline data there are three variables relating to the geographic scope of each observation. Given I restricted the scope to England only, these variable are now redundant and I removed them.
 
 
 ```{r}
@@ -165,6 +163,7 @@ processed_headline <- processed_headline %>%
 ```
 
 ### 3.4. Arranging columns for readability
+Different naming conventions are used in the two datasets, so some columns are renamed to ensure the same variable has the same name in each of the two datsets. The columns in each dataset are reorder to help make the tables more readable and quicker to interpret.
 
 ```{r}
 processed_lsoa <- processed_lsoa %>% 
@@ -187,8 +186,9 @@ head(processed_headline)
 ```
 
 ### 3.5. Calculating weekly case numbers
+Both datasets require further processing to calculate the number of cases per week. For the lsoa dataset to calculate weekly cases totals for England from weekly cases numbers for lower super output areas (the smallest unit of administrative geography used by the UK Government). For the headline dataset to calculate weekly case totals for england from daily case totals for England. The function `get_cases_per_week` can be found in `.\\functions_importing_cases.R` and was used to calculate week case numbers for both datasets. I kept the code for the function in a seperate `.R` file because I was experimenting with abstracting away some of the details of the code implementation from this notebook, to allow it to focus on documenting the process I followed and the initial insights generated.
 
-Came across the challenge of passing column names to dplyr functions, and found enquo() https://leaherb.com/pass-column-name-as-parameter-to-a-function-using-dplyr/ as   
+In the process of writing the `get_cases_per_week` function I came across the challenge of passing column names as arguments functions which include one or more dplyr functions, and found [enquo() as a solution](https://leaherb.com/pass-column-name-as-parameter-to-a-function-using-dplyr/).   
 
 ```{r}
 cpw_lsoa <- get_cases_per_week(df = processed_lsoa, case_col = cases)
@@ -199,9 +199,7 @@ head(cpw_headline)
 ```
 ## 3.6. Combine LSOA and Headline case per week data
 
-LSOA dataset has few weeks, so use left as not interested in headline data where there is no lsoa data for comparison.
-
-Having combined the datasets, the dataframe needs tidying ahead of plotting.
+Next I needed to combine the LSOA and Headline datasets, in order to plot visual comparisons of the weekly case totals from the two different sources. The LSOA dataset covers slightly fewer weeks than the headline dataset. So, I used a left join from the lsoa dataset to the headline dataset, which resulted in observations for the unmatched week in the headline dataset being dropped. Having combined the datasets the dataframe needed tidying again ahead of plotting.
 
 ```{r}
 cpw <- cpw_lsoa %>% 
