@@ -423,11 +423,11 @@ https://cran.r-project.org/web/packages/RSQLite/vignettes/RSQLite.html
 
 ```{r}
 covid_19_db <- dbConnect(RSQLite::SQLite(), "covid-19_db.sqlite")
-dbWriteTable(covid_19_db, "cpw", cpw)
+dbWriteTable(covid_19_db, "cpw", cpw, overwrite = TRUE)
 
 dbGetQuery(covid_19_db, "SELECT * FROM cpw")
 
-dbDisconnect(mydb)
+dbDisconnect(covid_19_db)
 #unlink("my-db.sqlite")
 ```
 
