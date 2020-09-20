@@ -337,7 +337,7 @@ head(processed_lsoa_alt)
 
 
 An unsuccessful attempt at a functional approach to the fill in the nas in the lsoa dataset.
-```{r}
+```{r, eval = FALSE}
 lsoa_na_replace <- function(cases, p){
 
 #   print(p)
@@ -365,9 +365,12 @@ lsoa_na_replace <- function(cases, p){
 
 processed_lsoa_alt <- processed_lsoa
 
-proc_opt_cols <- map(probabilities, lsoa_na_options, df = processed_lsoa_alt)
+proc_opt_cols <- map(probabilities, lsoa_na_options, df = processed_lsoa_alt) %>% 
+  set_names(c("a", "b", "c", "d"))
+#proc_opt_df <- map_dfr(proc_opt_cols, as.list)
+
 processed_lsoa_alt %>%
-   add_column(processed_lsoa_alt, proc_opt_cols[1], .name_repair = "minimal")
+   add_column(processed_lsoa_alt, proc_opt_cols[1])
 
 #
 #
