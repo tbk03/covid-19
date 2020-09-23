@@ -118,6 +118,18 @@ num_obs <- nrow(tidy_lsoa)
 stopifnot(num_lso * num_weeks == num_obs)
 ```
 
+Adding a histogram, testing out learning from Socviz Chapter 4
+
+```{r}
+p <- ggplot(data = tidy_lsoa, mapping = aes(x = cases))
+p + geom_histogram(binwidth = 1) +
+  scale_x_continuous(limits = c(2, 30))
+```
+```{r}
+
+```
+
+
 ### 2.2. Tidy Headline Data
 Already tidy 
 
@@ -248,6 +260,18 @@ plot_1 <- ggplot(data = cpw, mapping = aes(x = week_commencing, y = cases_per_we
 
 plot(plot_1)
 ```
+
+
+Plotting the proportional density estimates for the two datasets (experimenting with learnings from Socviz Chapter 4). I'm not 100% what this is showing, when using the `..scaled..` parameter for `geom_density`. Without `..scaled..` the plot show the kernel density estimate which from reading wikipedia, I think shows an estimate of the distribution for the population the data is sampled from ... maybe something to revisit as I brush up on my stats ...
+
+```{r}
+p <-ggplot(data = cpw, mapping = aes(x = cases_per_week))
+p + geom_density(aes(y = ..scaled.., fill = dataset, colour = dataset), alpha = 0.4) +
+  theme(legend.position = "top")
+```
+
+
+
 Given the scale of the differences between the case numbers in the two datasets, I'll investigate a little further. Below I plot the ratio between the number of cases in the two datasets. It shows that the headline dataset records between approximately 2 and 4 times as many cases as the LSOA dataset for the period after 16th March. The ratio is not plotted for earlier dates (i.e. early in the pandemic and pre-lockdown) as it is much larger, due to the relatively small number of cases reported in the LSOA dataset. So, I cropped the y axis of the graph to make it easier to view the variation in the ratio in the period since the initial period of 'lockdown' implemented by the Government in March 2020.
 
 ```{r}
