@@ -1,0 +1,78 @@
+---
+title: "cornavirus-cases_latest"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(httr)
+library(DBI)
+```
+
+
+https://theconversation.com/why-are-coronavirus-rates-rising-in-some-areas-of-england-and-not-others-147160
+
+
+
+```{r source external files, include = FALSE}
+source("gov_uk_covid_r_sdk.R", local = knitr::knit_global())
+```
+
+
+```{r}
+cases_latest <- read_csv("./Data/coronavirus-cases_latest.csv")
+
+cases_latest %>% 
+  select(`Area type`) %>% 
+  distinct()
+```
+
+National only data 
+
+* `hospitalCases`
+
+
+
+```{r}
+
+
+
+# Create filters:
+query_filters <- c(
+    "areaType=ltla"
+)
+
+# Create the structure as a list or a list of lists:
+query_structure <- list(
+    date       = "date", 
+    name       = "areaName", 
+    code       = "areaCode", 
+    daily      = "newCasesBySpecimenDate",
+    cumulative = "cumCasesBySpecimenDate",
+    cumCasesBySpecimenDateRate = "cumCasesBySpecimenDateRate",
+    hospitalCases = "hospitalCases",
+    newAdmissions = "newAdmissions"
+)
+
+result <- get_paginated_data(query_filters, query_structure)
+
+as_tibble(result) %>% 
+  sample_n(10)
+```
+
+```{r}
+cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
+dbWriteTable(cases_latest_db, "cases", result, overwrite = TRUE)
+
+df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
+
+dbDisconnect(cases_latest_db)
+
+df
+```
+
