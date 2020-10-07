@@ -12,8 +12,11 @@ library(ggplot2)
 library(tidyverse)
 library(httr)
 library(DBI)
+library(lubridate)
 ```
+## Goals
 
+* To understand the data available from cornavirus.data.gov.uk - what it can and can't tell you ()
 
 https://theconversation.com/why-are-coronavirus-rates-rising-in-some-areas-of-england-and-not-others-147160
 
@@ -32,6 +35,73 @@ cases_latest %>%
   distinct()
 ```
 
+
+
+
+Restrictions data - https://visual.parliament.uk/research/visualisations/coronavirus-restrictions-map/ 
+
+
+
+```{r}
+restrictions <- read_csv("./Data/commonslibrary-coronavirus-restrictions-data.csv")
+
+restrictions_local <- restrictions %>% 
+  filter(l_restrictions == "Local") %>% 
+  select(-l_url_local, -l_url_national, -l_restrictions) %>% 
+  select(-starts_with("l_national")) %>% 
+  rename(l_ltla = l_Category)
+
+str_sub(colnames(restrictions_local), 1, 2) <- ""
+
+restrictions_tidy <- restrictions_local %>%
+  pivot_longer(cols = local_ruleofsix:local_openinghours, names_to = "restriction_type", values_to = "in_force")
+
+restrictions_tidy 
+```
+Based on the prominent narrative that a fragmented patchwork of local measures is in place course the UK, I was expecting to observe an accompanying degree of variability in the data. However, the frequency counts for each of the local measures indicate otherwise.
+```{r}
+restrictions_tidy %>% 
+  group_by(restriction_type) %>% 
+  summarise(n = n()) 
+
+```
+So, I took a quick look at how many distinct combinations of local measures were present in the data.
+```{r}
+restrictions_local %>% 
+  select(starts_with("local_")) %>% 
+  distinct()
+```
+
+Three groups of local measures can be identified from the data: 
+
+1 - local_householdmixing only
+2 - local_householdmixing and local_businessclosures
+3 - local_householdmixing and local_stayinglocal
+
+The frequency counts for each of these three groups are show below. 
+
+```{r}
+restriction_local <- restrictions_local %>%
+  unite(rest_group, starts_with(("local_"))) %>% 
+  group_by(rest_group) %>% 
+  mutate(rest_group_id = group_indices()) %>%
+  ungroup() 
+
+restriction_local %>% 
+  group_by(rest_group_id) %>% 
+  summarise(n = n())
+```
+
+**Interim conclusion:** At the level of granularity presented in this data there is little variability in the local measures in place
+
+```{r}
+la_lookup <- read_csv("./Data/Lower_Tier_Local_Authority_to_Upper_Tier_Local_Authority__December_2019__Lookup_in_England_and_Wales.csv")
+
+restriction_local %>% 
+  left_join(la_lookup, by = c("ltla" = "LTLA19NM"))
+```
+
+
 National only data 
 
 * `hospitalCases`
@@ -49,14 +119,40 @@ query_filters <- c(
 
 # Create the structure as a list or a list of lists:
 query_structure <- list(
-    date       = "date", 
-    name       = "areaName", 
-    code       = "areaCode", 
-    daily      = "newCasesBySpecimenDate",
-    cumulative = "cumCasesBySpecimenDate",
+    # areaType  = "areaType",
+    areaName = "areaName",
+    areaCode = "areaCode",
+    date = "date",
+    #newCasesByPublishDate = "newCasesByPublishDate",
+    #cumCasesByPublishDate = "cumCasesByPublishDate",
     cumCasesBySpecimenDateRate = "cumCasesBySpecimenDateRate",
+    newCasesBySpecimenDate = "newCasesBySpecimenDate",
+    cumCasesBySpecimenDateRate = "cumCasesBySpecimenDateRate",
+    cumCasesBySpecimenDate = "cumCasesBySpecimenDate",
+    maleCases = "maleCases",
+    femaleCases = "femaleCases",
+    #newPillarOneTestsByPublishDate = "newPillarOneTestsByPublishDate",
+    # cumPillarOneTestsByPublishDate = "cumPillarOneTestsByPublishDate",
+    # newPillarTwoTestsByPublishDate = "newPillarTwoTestsByPublishDate",
+    # cumPillarTwoTestsByPublishDate = "cumPillarTwoTestsByPublishDate",
+    # newPillarThreeTestsByPublishDate = "newPillarThreeTestsByPublishDate",
+    # cumPillarThreeTestsByPublishDate = "cumPillarThreeTestsByPublishDate",
+    # newPillarFourTestsByPublishDate = "newPillarFourTestsByPublishDate",
+    # cumPillarFourTestsByPublishDate = "cumPillarFourTestsByPublishDate",
+    newAdmissions = "newAdmissions",
+    cumAdmissions = "cumAdmissions",
+    cumAdmissionsByAge = "cumAdmissionsByAge",
+    # cumTestsByPublishDate = "cumTestsByPublishDate",
+    # newTestsByPublishDate = "newTestsByPublishDate",
+    covidOccupiedMVBeds = "covidOccupiedMVBeds",
     hospitalCases = "hospitalCases",
-    newAdmissions = "newAdmissions"
+    # plannedCapacityByPublishDate = "plannedCapacityByPublishDate",
+    newDeaths28DaysByPublishDate = "newDeaths28DaysByPublishDate",
+    cumDeaths28DaysByPublishDate = "cumDeaths28DaysByPublishDate",
+    cumDeaths28DaysByPublishDateRate = "cumDeaths28DaysByPublishDateRate",
+    newDeaths28DaysByDeathDate = "newDeaths28DaysByDeathDate",
+    cumDeaths28DaysByDeathDate = "cumDeaths28DaysByDeathDate",
+    cumDeaths28DaysByDeathDateRate = "cumDeaths28DaysByDeathDateRate"
 )
 
 result <- get_paginated_data(query_filters, query_structure)
@@ -74,5 +170,17 @@ df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
 dbDisconnect(cases_latest_db)
 
 df
+```
+
+```{r}
+df %>% 
+  filter(areaName == "Leeds") %>% 
+  
+  ggplot(aes(x = as_date(date), y = newCasesBySpecimenDate)) +
+  
+  geom_col() +
+  geom_smooth(se = FALSE)
+
+
 ```
 

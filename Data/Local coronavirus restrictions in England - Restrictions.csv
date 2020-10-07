@@ -1,0 +1,115 @@
+AreaCode,AreaName,StartDate,EndDate,LegislationRef,GuidanceRef
+E07000129,Blaby,2020-07-04,2020-07-18,,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E07000130,Charnwood,2020-07-04,2020-07-18,,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E07000135,Oadby and Wigston,2020-07-04,2020-08-01,https://www.legislation.gov.uk/uksi/2020/685,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E06000008,Blackburn with Darwen,2020-07-25,2020-08-01,https://www.legislation.gov.uk/uksi/2020/800,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E06000032,Luton,2020-07-25,2020-08-01,https://www.legislation.gov.uk/uksi/2020/800,https://www.gov.uk/guidance/luton-local-restrictions
+E06000016,Leicester,2020-07-04,2020-08-03,https://www.legislation.gov.uk/uksi/2020/685,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E08000001,Bolton,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/bolton-local-restrictions
+E07000117,Burnley,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E08000002,Bury,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000033,Calderdale,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E07000120,Hyndburn,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E08000034,Kirklees,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E08000003,Manchester,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000004,Oldham,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E07000122,Pendle,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000005,Rochdale,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E07000125,Rossendale,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000006,Salford,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000007,Stockport,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E08000008,Tameside,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000009,Trafford,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000010,Wigan,2020-07-31,2020-08-05,,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+S12000033,Aberdeen City,2020-08-05,2020-08-24,https://www.legislation.gov.uk/ssi/2020/234,
+E06000008,Blackburn with Darwen,2020-08-01,2020-08-26,https://www.legislation.gov.uk/uksi/2020/822,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000032,Bradford,2020-08-01,2020-08-26,https://www.legislation.gov.uk/uksi/2020/822,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E07000154,Northampton,2020-08-23,2020-08-29,,https://www.gov.uk/guidance/northampton-what-you-can-and-cannot-do
+E07000117,Burnley,2020-08-05,2020-09-02,https://www.legislation.gov.uk/uksi/2020/931,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E07000120,Hyndburn,2020-08-05,2020-09-02,https://www.legislation.gov.uk/uksi/2020/931,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E08000007,Stockport,2020-08-05,2020-09-02,https://www.legislation.gov.uk/uksi/2020/931,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E08000032,Bradford,2020-08-26,2020-09-02,https://www.legislation.gov.uk/uksi/2020/898,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E06000016,Leicester,2020-08-03,2020-09-08,https://www.legislation.gov.uk/uksi/2020/824,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E06000008,Blackburn with Darwen,2020-08-26,2020-09-08,https://www.legislation.gov.uk/uksi/2020/898,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000032,Bradford,2020-09-02,2020-09-08,https://www.legislation.gov.uk/uksi/2020/930,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E08000001,Bolton,2020-08-05,2020-09-10,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/bolton-local-restrictions
+E06000016,Leicester,2020-09-08,2020-09-15,https://www.legislation.gov.uk/uksi/2020/954,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E08000025,Birmingham,2020-09-11,2020-09-15,,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+E08000028,Sandwell,2020-09-11,2020-09-15,,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+E08000029,Solihull,2020-09-11,2020-09-15,,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+E08000033,Calderdale,2020-08-05,2020-09-22,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E08000034,Kirklees,2020-08-05,2020-09-22,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E07000122,Pendle,2020-08-05,2020-09-22,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000125,Rossendale,2020-08-05,2020-09-22,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E06000008,Blackburn with Darwen,2020-09-08,2020-09-22,https://www.legislation.gov.uk/uksi/2020/954,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000032,Bradford,2020-09-08,2020-09-22,https://www.legislation.gov.uk/uksi/2020/954,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E06000016,Leicester,2020-09-15,2020-09-22,https://www.legislation.gov.uk/uksi/2020/987,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E08000010,Wigan,2020-08-05,2020-09-26,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/north-west-of-england-local-restrictions-what-you-can-and-cannot-do
+E07000154,Northampton,2020-08-29,2020-09-26,https://www.legislation.gov.uk/uksi/2020/921,https://www.gov.uk/guidance/northampton-what-you-can-and-cannot-do
+E08000002,Bury,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000003,Manchester,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000004,Oldham,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000005,Rochdale,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000006,Salford,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000008,Tameside,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000009,Trafford,2020-08-05,,https://www.legislation.gov.uk/uksi/2020/828,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+S12000033,Aberdeen City,2020-08-24,,https://www.legislation.gov.uk/ssi/2020/253,
+W06000018,Caerphilly,2020-09-08,,https://www.legislation.gov.uk/wsi/2020/961,https://gov.wales/local-lockdown
+E08000001,Bolton,2020-09-10,,https://www.legislation.gov.uk/uksi/2020/974,https://www.gov.uk/guidance/bolton-local-restrictions
+E08000025,Birmingham,2020-09-15,,https://www.legislation.gov.uk/uksi/2020/988,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+E08000028,Sandwell,2020-09-15,,https://www.legislation.gov.uk/uksi/2020/988,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+E08000029,Solihull,2020-09-15,,https://www.legislation.gov.uk/uksi/2020/988,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+W06000016,Rhondda Cynon Taf,2020-09-17,,https://www.legislation.gov.uk/wsi/2020/1007,https://gov.wales/local-lockdown
+E06000047,County Durham,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E08000037,Gateshead,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E08000021,Newcastle upon Tyne,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E08000022,North Tyneside,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E06000057,Northumberland,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E08000023,South Tyneside,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E08000024,Sunderland,2020-09-18,,https://www.legislation.gov.uk/uksi/2020/1012,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E06000008,Blackburn with Darwen,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+W06000019,Blaenau Gwent,2020-09-22,,https://www.legislation.gov.uk/wsi/2020/1022,https://gov.wales/local-lockdown
+E08000032,Bradford,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+W06000013,Bridgend,2020-09-22,,https://www.legislation.gov.uk/wsi/2020/1022,https://gov.wales/local-lockdown
+E07000117,Burnley,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000033,Calderdale,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E07000118,Chorley,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000119,Fylde,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E06000006,Halton,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000120,Hyndburn,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000034,Kirklees,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E08000011,Knowsley,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000121,Lancaster,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E06000016,Leicester,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E08000012,Liverpool,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+W06000024,Merthyr Tydfil,2020-09-22,,https://www.legislation.gov.uk/wsi/2020/1022,https://gov.wales/local-lockdown
+W06000022,Newport,2020-09-22,,https://www.legislation.gov.uk/wsi/2020/1022,https://gov.wales/local-lockdown
+E07000135,Oadby and Wigston,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/leicester-lockdown-what-you-can-and-cannot-do
+E07000122,Pendle,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000123,Preston,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000124,Ribble Valley,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000125,Rossendale,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000014,Sefton,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000126,South Ribble,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000013,St. Helens,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E06000007,Warrington,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E07000127,West Lancashire,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000015,Wirral,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E08000031,Wolverhampton,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/birmingham-sandwell-and-solihull-local-restrictions
+E07000128,Wyre,2020-09-22,,https://www.legislation.gov.uk/uksi/2020/1019,https://www.gov.uk/guidance/north-west-england-local-restrictions
+E06000009,Blackpool,2020-09-26,,https://www.legislation.gov.uk/uksi/2020/1041,https://www.gov.uk/guidance/north-west-england-local-restrictions
+W06000010,Carmarthenshire,2020-09-26,,https://www.legislation.gov.uk/wsi/2020/1040,https://gov.wales/local-lockdown
+E08000035,Leeds,2020-09-26,,https://www.legislation.gov.uk/uksi/2020/1041,https://www.gov.uk/guidance/west-yorkshire-local-restrictions
+E08000007,Stockport,2020-09-26,,https://www.legislation.gov.uk/uksi/2020/1041,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+E08000010,Wigan,2020-09-26,,https://www.legislation.gov.uk/uksi/2020/1041,https://www.gov.uk/guidance/greater-manchester-local-restrictions
+W06000015,Cardiff,2020-09-27,,https://www.legislation.gov.uk/wsi/2020/1043,https://gov.wales/local-lockdown
+W06000011,Swansea,2020-09-27,,https://www.legislation.gov.uk/wsi/2020/1043,https://gov.wales/local-lockdown
+W06000012,Neath Port Talbot,2020-09-28,,https://www.legislation.gov.uk/wsi/2020/1049,https://gov.wales/local-lockdown
+W06000020,Torfaen,2020-09-28,,https://www.legislation.gov.uk/wsi/2020/1049,https://gov.wales/local-lockdown
+W06000014,Vale of Glamorgan,2020-09-28,,https://www.legislation.gov.uk/wsi/2020/1049,https://gov.wales/local-lockdown
+W06000003,Conwy,2020-09-30,,https://www.legislation.gov.uk/wsi/2020/1066,https://gov.wales/local-lockdown
+W06000004,Denbighshire,2020-09-30,,https://www.legislation.gov.uk/wsi/2020/1066,https://gov.wales/local-lockdown
+W06000005,Flintshire,2020-09-30,,https://www.legislation.gov.uk/wsi/2020/1066,https://gov.wales/local-lockdown
+W06000006,Wrexham,2020-09-30,,https://www.legislation.gov.uk/wsi/2020/1066,https://gov.wales/local-lockdown
+E06000001,Hartlepool,2020-10-03,,https://www.legislation.gov.uk/uksi/2020/1074,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
+E06000002,Middlesbrough,2020-10-03,,https://www.legislation.gov.uk/uksi/2020/1074,https://www.gov.uk/guidance/north-east-of-england-local-restrictions
