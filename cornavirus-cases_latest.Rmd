@@ -8,6 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+library(testthat)
 library(ggplot2)
 library(tidyverse)
 library(httr)
@@ -21,20 +22,39 @@ library(lubridate)
 https://theconversation.com/why-are-coronavirus-rates-rising-in-some-areas-of-england-and-not-others-147160
 
 
+## Setup project
 
 ```{r source external files, include = FALSE}
-source("gov_uk_covid_r_sdk.R", local = knitr::knit_global())
+source("r_code/gov_uk_covid_r_sdk.R", local = knitr::knit_global())
+source("r_code/covid_helper_functions.R", local = knitr::knit_global())
 ```
+
+```{r}
+test_file("tests/test-covid_helper_functions.R")
+```
+
+
+```{r}
+update_from_api = FALSE
+```
+
+## 1. Cronavirus datasets
+
+### Latest cases CSV
+
 
 
 ```{r}
 cases_latest <- read_csv("./Data/coronavirus-cases_latest.csv")
 
+sample_n_from_df(cases_latest, 10)
+```
+
+```{r}
 cases_latest %>% 
   select(`Area type`) %>% 
   distinct()
 ```
-
 
 
 
@@ -109,9 +129,6 @@ National only data
 
 
 ```{r}
-
-
-
 # Create filters:
 query_filters <- c(
     "areaType=ltla"
@@ -155,21 +172,23 @@ query_structure <- list(
     cumDeaths28DaysByDeathDateRate = "cumDeaths28DaysByDeathDateRate"
 )
 
-result <- get_paginated_data(query_filters, query_structure)
+if (update_from_api){
+  
+  result <- get_paginated_data(query_filters, query_structure)
+  result <- as_tibble(result)
+  
+  cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
+  dbWriteTable(cases_latest_db, "cases", result, overwrite = TRUE)
+  
+  df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
+  
+  dbDisconnect(cases_latest_db)
+  
+  df %>% 
+    sample_n(10)
+}
 
-as_tibble(result) %>% 
-  sample_n(10)
-```
 
-```{r}
-cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
-dbWriteTable(cases_latest_db, "cases", result, overwrite = TRUE)
-
-df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
-
-dbDisconnect(cases_latest_db)
-
-df
 ```
 
 ```{r}
