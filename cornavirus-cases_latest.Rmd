@@ -42,8 +42,6 @@ update_from_api = FALSE
 
 ### Latest cases CSV
 
-
-
 ```{r}
 cases_latest <- read_csv("./Data/coronavirus-cases_latest.csv")
 
@@ -57,6 +55,7 @@ cases_latest %>%
 ```
 
 
+### Restrictions data
 
 Restrictions data - https://visual.parliament.uk/research/visualisations/coronavirus-restrictions-map/ 
 
@@ -121,6 +120,7 @@ restriction_local %>%
   left_join(la_lookup, by = c("ltla" = "LTLA19NM"))
 ```
 
+### Latest cases API
 
 National only data 
 
@@ -144,7 +144,6 @@ query_structure <- list(
     #cumCasesByPublishDate = "cumCasesByPublishDate",
     cumCasesBySpecimenDateRate = "cumCasesBySpecimenDateRate",
     newCasesBySpecimenDate = "newCasesBySpecimenDate",
-    cumCasesBySpecimenDateRate = "cumCasesBySpecimenDateRate",
     cumCasesBySpecimenDate = "cumCasesBySpecimenDate",
     maleCases = "maleCases",
     femaleCases = "femaleCases",
@@ -180,26 +179,53 @@ if (update_from_api){
   cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
   dbWriteTable(cases_latest_db, "cases", result, overwrite = TRUE)
   
-  df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
-  
   dbDisconnect(cases_latest_db)
-  
-  df %>% 
-    sample_n(10)
 }
 
 
 ```
 
 ```{r}
+
+cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
+
+  
+df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
+dbDisconnect(cases_latest_db)
+  
+df <- df %>% 
+  mutate(date = as_date(date))
+
+df %>% 
+  sample_n(10)
+
+```
+
+Drop columns where all values are NA
+
+```{r}
+df <- df %>% 
+  select_if(~sum(!is.na(.)) > 0) %>% 
+  select(-cumCasesBySpecimenDateRate.1)
+df
+```
+
+
+```{r}
 df %>% 
   filter(areaName == "Leeds") %>% 
   
-  ggplot(aes(x = as_date(date), y = newCasesBySpecimenDate)) +
+  ggplot(aes(x = date, y = newCasesBySpecimenDate)) +
   
   geom_col() +
   geom_smooth(se = FALSE)
 
 
+```
+
+```{r}
+ggplot(data = df,
+       mapping = aes(x = date,
+                     y = ))
 ```
 
