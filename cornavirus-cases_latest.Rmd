@@ -190,7 +190,7 @@ if (update_from_api){
 cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
 
   
-df <- dbGetQuery(cases_latest_db, "SELECT * FROM cases")
+df <- as_tibble(dbGetQuery(cases_latest_db, "SELECT * FROM cases"))
 dbDisconnect(cases_latest_db)
   
 df <- df %>% 
@@ -223,9 +223,62 @@ df %>%
 
 ```
 
+Plotting lines for confirmed cases for each (lower tier) local authority in England and Wales. Highlighting the growth in confirmed cases from August onwards, and the variability in the number of cases across the local authorities. The darker areas of the plot give an initial indication of where there are greater numbers of local authorities with similar case numbers.
+
 ```{r}
-ggplot(data = df,
-       mapping = aes(x = date,
-                     y = ))
+p <- ggplot(data = df,
+            mapping = aes(x = date,
+                          y = newCasesBySpecimenDate,
+                          group = areaName)
+            )
+
+p + geom_line(alpha = 0.1) +
+  
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b") +
+  
+  labs(x = NULL,
+       y = "New Cases (by specimen date)"
+       ) +
+  
+  theme_minimal()
+```
+
+Let's take a look at the variablity in case numbers across local authorities across September
+
+```{r, out.width="150%"}
+
+sept_cases <- df %>% 
+  filter(date >= as_date("2020-09-01")) %>% 
+  filter(date < as_date("2020-10-01")) %>% 
+  
+  # remove Scotland data from case data, as restriction data for Scotland is not available
+  filter(!str_detect(areaCode, "^S")) %>% 
+  
+  left_join(restriction_local, by = c("areaName" = "ltla")) %>% 
+  
+  group_by(areaName) %>% 
+  summarise(sept_new_cases_by_specimen_date = sum(newCasesBySpecimenDate),
+            restrictions = as_factor(median(rest_group_id, na.rm = TRUE))
+            )
+
+sept_cases
+
+ggplot(data = sept_cases, mapping = aes(x = reorder(areaName, sept_new_cases_by_specimen_date),
+                                        y = sept_new_cases_by_specimen_date)
+       ) +
+  geom_col(aes(fill = restrictions)) +
+  
+  scale_fill_discrete() +
+  
+  theme_minimal()
+
+# ggplot(data = sept_cases, mapping = aes(x = newCasesBySpecimenDate), group = areaName) +
+#   geom_histogram(binwidth = 1) +
+#   
+#   scale_x_continuous(limits = c(0,100)) +
+#   
+#   theme_minimal()
+
 ```
 
