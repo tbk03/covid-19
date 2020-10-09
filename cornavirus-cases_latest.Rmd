@@ -8,12 +8,15 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+library(gtools)
 library(testthat)
 library(ggplot2)
 library(tidyverse)
 library(httr)
 library(DBI)
 library(lubridate)
+library(ggrepel)
+library(RcppRoll)
 ```
 ## Goals
 
@@ -21,6 +24,13 @@ library(lubridate)
 
 https://theconversation.com/why-are-coronavirus-rates-rising-in-some-areas-of-england-and-not-others-147160
 
+
+**Ideas to followup:**
+
+* Faceting or grouping by indicies of multiple deprivation
+* Variation of hospital statistics
+* Co-variation specimen and report date
+* Group LAs by newcase at end of lockdown ...
 
 ## Setup project
 
@@ -57,7 +67,7 @@ cases_latest %>%
 
 ### Restrictions data
 
-Restrictions data - https://visual.parliament.uk/research/visualisations/coronavirus-restrictions-map/ 
+Restrictions data (07/10/2020) - https://visual.parliament.uk/research/visualisations/coronavirus-restrictions-map/ 
 
 
 
@@ -111,6 +121,8 @@ restriction_local %>%
   summarise(n = n())
 ```
 
+
+
 **Interim conclusion:** At the level of granularity presented in this data there is little variability in the local measures in place
 
 ```{r}
@@ -140,8 +152,8 @@ query_structure <- list(
     areaName = "areaName",
     areaCode = "areaCode",
     date = "date",
-    #newCasesByPublishDate = "newCasesByPublishDate",
-    #cumCasesByPublishDate = "cumCasesByPublishDate",
+    newCasesByPublishDate = "newCasesByPublishDate",
+    cumCasesByPublishDate = "cumCasesByPublishDate",
     cumCasesBySpecimenDateRate = "cumCasesBySpecimenDateRate",
     newCasesBySpecimenDate = "newCasesBySpecimenDate",
     cumCasesBySpecimenDate = "cumCasesBySpecimenDate",
@@ -190,13 +202,13 @@ if (update_from_api){
 cases_latest_db <- dbConnect(RSQLite::SQLite(), "cases_latest_db.sqlite")
 
   
-df <- as_tibble(dbGetQuery(cases_latest_db, "SELECT * FROM cases"))
+cases <- as_tibble(dbGetQuery(cases_latest_db, "SELECT * FROM cases"))
 dbDisconnect(cases_latest_db)
   
-df <- df %>% 
+cases <- cases %>% 
   mutate(date = as_date(date))
 
-df %>% 
+cases %>% 
   sample_n(10)
 
 ```
@@ -204,15 +216,36 @@ df %>%
 Drop columns where all values are NA
 
 ```{r}
-df <- df %>% 
-  select_if(~sum(!is.na(.)) > 0) %>% 
-  select(-cumCasesBySpecimenDateRate.1)
-df
+cases <- cases %>% 
+  select_if(~sum(!is.na(.)) > 0)
+cases
+```
+Calculate moving averages
+
+```{r}
+cases <- cases %>% 
+  mutate(mm_newCasesBySpecimenDate = roll_mean(newCasesBySpecimenDate, n = 7, align="center", fill = 0))
+
+cases
 ```
 
 
+### Population data
+https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/populationestimatesforukenglandandwalesscotlandandnorthernireland
+
 ```{r}
-df %>% 
+pop_df <-read_csv("./Data/ons_mid_2019_population_estimates.csv")
+pop_df <- pop_df %>% 
+  rename(all_ages = `All ages`)
+pop_df
+```
+
+
+
+## Exploratory data analysis
+
+```{r}
+cases %>% 
   filter(areaName == "Leeds") %>% 
   
   ggplot(aes(x = date, y = newCasesBySpecimenDate)) +
@@ -226,7 +259,7 @@ df %>%
 Plotting lines for confirmed cases for each (lower tier) local authority in England and Wales. Highlighting the growth in confirmed cases from August onwards, and the variability in the number of cases across the local authorities. The darker areas of the plot give an initial indication of where there are greater numbers of local authorities with similar case numbers.
 
 ```{r}
-p <- ggplot(data = df,
+p <- ggplot(data = cases,
             mapping = aes(x = date,
                           y = newCasesBySpecimenDate,
                           group = areaName)
@@ -243,12 +276,151 @@ p + geom_line(alpha = 0.1) +
   
   theme_minimal()
 ```
+Use newcases moving mean (1 week)
+```{r}
+p <- ggplot(data = cases,
+            mapping = aes(x = date,
+                          y = mm_newCasesBySpecimenDate,
+                          group = areaName)
+            )
 
-Let's take a look at the variablity in case numbers across local authorities across September
+p + geom_line(alpha = 0.1) +
+  
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b") +
+  
+  labs(x = NULL,
+       y = "New Cases (by specimen date)"
+       ) +
+  
+  theme_minimal()
+```
 
-```{r, out.width="150%"}
+```{r}
+p <- ggplot(data = cases,
+            mapping = aes(x = date,
+                          y = cumCasesBySpecimenDateRate,
+                          group = areaName)
+            )
 
-sept_cases <- df %>% 
+p + geom_line(alpha = 0.1) +
+  
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b") +
+  
+  labs(x = NULL,
+       y = "Rate of cumulative cases by publish date per 100k resident population"
+       ) +
+  
+  theme_minimal()
+```
+To look at new cases per 100,000 population, make use of ONS population date
+
+```{r}
+pop_df_minimal <- pop_df %>% 
+  select(Code, all_ages)
+
+pop_df_minimal
+```
+Noticed negative newCase numbers, resulting in negative rates
+
+```{r}
+cases_pop <- cases %>%
+  left_join(pop_df_minimal, by = c("areaCode" = "Code")) %>% 
+  mutate(newCasesBySpecimenDateRate = (newCasesBySpecimenDate / all_ages) * 1e05)
+
+sample_n_from_df(cases_pop, 10)
+```
+
+```{r}
+p <- ggplot(data = cases_pop,
+            mapping = aes(x = date,
+                          #y = newCasesBySpecimenDateRate,
+                          y = roll_mean(newCasesBySpecimenDateRate, n =7, align = "center", fill = 0),
+                          group = areaName)
+            )
+
+p + geom_line(alpha = 0.1) +
+  
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b") +
+  
+  labs(x = NULL,
+       y = "Rate of new cases per day per 100k resident population"
+       ) +
+  
+  theme_minimal()
+```
+Look at a two window centred on 1st July - around the minimum
+
+```{r}
+july_first_case_summary <- cases_pop %>%
+  filter(date >= "2020-06-24") %>% 
+  filter(date <= "2020-07-08") %>%
+  group_by(areaName) %>% 
+  summarise(mean_new_case_rate_jul1 = mean(newCasesBySpecimenDateRate))
+  #mutate(quantile = quantcut(mean_new_case_rate, na.rm = TRUE)) %>% 
+
+july_first_case_summary %>% 
+  ggplot(mapping = aes(x = mean_new_case_rate_jul1)) +
+  
+  geom_histogram(bins = 100) +
+  
+  theme_minimal()
+
+
+```
+
+```{r}
+summary(july_first_case_summary)
+```
+
+```{r, fig.height=12, fig.width = 8}
+july_first_case_summary <- july_first_case_summary %>% 
+  mutate(quantile_new_case_rate_jul1 = quantcut(mean_new_case_rate_jul1, na.rm = TRUE))
+
+cases_pop <- cases_pop %>% 
+  left_join(july_first_case_summary)
+
+facet_labs <- c(`[0,0.269]` = "q1", `(0.269,0.524]` = "q2", `(0.524,0.941]` = "q3", `(0.941,18.3]` = "q4")
+
+p <- ggplot(data = subset(cases_pop, !is.na(quantile_new_case_rate_jul1)),
+            mapping = aes(x = date,
+                          y = roll_mean(newCasesBySpecimenDateRate, n = 7, align = "center", fill = 0),
+                          group = areaName,
+                          colour = quantile_new_case_rate_jul1
+                          )
+            )
+
+p + geom_line(alpha = 0.3) +
+  
+  facet_wrap(~quantile_new_case_rate_jul1, ncol = 1, 
+             labeller=labeller(quantile_new_case_rate_jul1 = facet_labs)) +
+  
+  scale_x_date(date_breaks = "1 month",
+               date_labels = "%b",
+               limits =  c(as_date("2020-07-01"), NA)             
+               ) +
+  
+  labs(x = NULL,
+       y = "Rate of new cases per day per 100k resident population"
+       ) +
+
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+### September
+
+Let's take a look at the variability in case numbers across local authorities across September.
+
+Labeled with grey text - local authorities without restrictions, and amongst the 50 local authorities with the highest rates.
+Labeled with light blue text - the one local authority subject to business closures.
+
+```{r, fig.width=12, fig.height=8}
+
+sept_cases <- cases_pop %>% 
   filter(date >= as_date("2020-09-01")) %>% 
   filter(date < as_date("2020-10-01")) %>% 
   
@@ -259,19 +431,47 @@ sept_cases <- df %>%
   
   group_by(areaName) %>% 
   summarise(sept_new_cases_by_specimen_date = sum(newCasesBySpecimenDate),
-            restrictions = as_factor(median(rest_group_id, na.rm = TRUE))
-            )
+            mean_case_rate = mean(newCasesBySpecimenDateRate),
+            restrictions = median(rest_group_id, na.rm = TRUE)
+            ) %>% 
+  mutate(mean_case_rate_rank = min_rank(desc(mean_case_rate)))
 
-sept_cases
+sept_cases$restrictions[is.na(sept_cases$restrictions)] <- 0
+sept_cases$restrictions <- as_factor(sept_cases$restrictions)
 
-ggplot(data = sept_cases, mapping = aes(x = reorder(areaName, sept_new_cases_by_specimen_date),
-                                        y = sept_new_cases_by_specimen_date)
+ggplot(data = sept_cases, mapping = aes(x = reorder(areaName, mean_case_rate),
+                                        y = mean_case_rate)
        ) +
-  geom_col(aes(fill = restrictions)) +
   
-  scale_fill_discrete() +
+  geom_col(aes(fill = restrictions), alpha = 0.8) +
+  geom_text_repel(data = subset(sept_cases, restrictions == 2),
+                  mapping = aes(label = areaName),
+                  nudge_x = -20,
+                  nudge_y = 5,
+                  colour = "#56B4E9"
+                  ) +
   
-  theme_minimal()
+    geom_text_repel(data = subset(sept_cases, 
+                                  restrictions == 0 & mean_case_rate_rank <= 50
+                                  ),
+                  mapping = aes(label = areaName),
+                  nudge_x = -25,
+                  nudge_y = 5,
+                  colour = "grey60"
+                  ) +
+  
+  scale_x_discrete(labels = NULL) +
+  scale_fill_manual(values=c("grey60", "aquamarine3", "#56B4E9", "blue4"), 
+                    labels = c("None", "Household mixing", "House mixing and business closures", "Household mixing and stay local" )
+                    ) +
+  
+  labs(x = "Local authorities (Exc. Scotland)",
+       y = "Mean new cases per day per 100k resident population (Sept. 2020)",
+       fill = "Restrictions",
+       caption = "Local authorities excluding Scotland") +
+  
+  theme_minimal() +
+  theme(panel.grid.major.x = element_blank())
 
 # ggplot(data = sept_cases, mapping = aes(x = newCasesBySpecimenDate), group = areaName) +
 #   geom_histogram(binwidth = 1) +
@@ -282,3 +482,21 @@ ggplot(data = sept_cases, mapping = aes(x = reorder(areaName, sept_new_cases_by_
 
 ```
 
+
+
+## Covariation
+
+```{r}
+head(cases)
+```
+
+
+```{r}
+p <- ggplot(data = cases, mapping = aes(x = newCasesBySpecimenDate, y = newCasesByPublishDate))
+
+p + geom_jitter()
+```
+
+
+
+*Scatter plot cases vs deaths
