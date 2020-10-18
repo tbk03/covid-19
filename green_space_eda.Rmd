@@ -1,0 +1,150 @@
+---
+title: "green space EDA"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(readxl)
+
+source("r_code/covid_helper_functions.R")
+```
+Objectives:
+
+* personal interest in the topic
++ green gym
++ covid experience
+
+https://blogs.bmj.com/bmj/2020/07/03/covid-19-has-highlighted-the-inadequate-and-unequal-access-to-high-quality-green-spaces/
+https://www.weforum.org/agenda/2020/08/parks-green-spaces-mental-health-access-equality/
+
+* Develop 
+
+
+Scale of analysis: MSOA (2 of the 3 datasets at this granularity)
+Geographic scope: England (case data at MSOA level available for England only)
+
+## 1. Data sources
+
+### 1.1. Access to private green space (gardens)
+The ONS (Office for National Statistics) provides [data on access to private green space](https://www.ons.gov.uk/economy/environmentalaccounts/datasets/accesstogardensandpublicgreenspaceingreatbritain) (i.e. access to gardens) for each MSOA in Great Britain. Here I am using the most recent April 2020 edition of the data. I quickly, manually edited the ONS excel file to make it easier use the `read_excel` function for data import. Given it is unlikely that the ONS data will be updated during the course of this analysis, it was preferable to go for the quicker manual process than investing time in a re-producible programmatic approach.
+
+```{r, import gs 1}
+
+private_green_space <- read_excel("./Data/osprivateoutdoorspacereferencetables.xlsx", sheet = "MSOA gardens")
+private_green_space %>% 
+  sample_n_from_df(10)
+```
+
+### 1.2. Access to public green space (parks)
+The ONS (Office for National Statistics) also provides [data on access to public green space](https://www.ons.gov.uk/economy/environmentalaccounts/datasets/accesstogardensandpublicgreenspaceingreatbritain) (i.e. access to parks and playing fields) for each Lower Super Output Area (LSOA) in Great Britain. In this case no manual editing of the ONS excel file was required. 
+
+It should be noted that this access to public green space data is provided at a finer geographic resolution than the other datasets used in this analysis, which are provided at MSOA granularity.  Each MSOA is broken down in a number of LSOAs, so later on it will be straight forward (with the help of a lookup table) to aggregate this data to enable comparision with the other data sources.
+
+```{r, import gs 2}
+public_green_space <-  read_excel("./Data/ospublicgreenspacereferencetables.xlsx", sheet = "LSOA Parks and Playing Fields")
+public_green_space %>% 
+  sample_n_from_df(10)
+```
+
+### 1.3. Covid cases
+[data.gov.uk](https://coronavirus.data.gov.uk/about-data) provides data on the number of Covid-19 cases (as confirmed by positive tests) occurring in each English MSOA. This data is provided in the form of weekly case numbers. A value of `-99` is used if in a given week, zero, one or two cases are reported in a MSOA. This is presumably to reduce the risk of individual cases reported within the data being identified.    
+Below I import the data and check how NA values are used within the dataset, as no details are provided in the limited documentation provided by data.gov.uk. No NA are present for variables reporting the number of cases occurring. This means I can replace the -99 values with NA, making it easier to work with the case data in the remainder of this notebook. 
+
+```{r, import covid 1, message=FALSE}
+cases <- read_csv("./Data/MSOAs_latest.csv")
+
+# Check how NA values used in the case data
+na_count <- cases %>% 
+  map(~ sum(is.na(.)))
+
+# reimport case data, replacing -99 in case columns with NA and defining column types
+# (where readr initial guesses have been unsuccessful)
+
+cases <- read_csv("./Data/MSOAs_latest.csv", 
+                  na = c(-99, "NA"),
+                  col_types = cols(wk_05 = "d",
+                                   wk_06 = "d",
+                                   wk_07 = "d",
+                                   wk_08 = "d",
+                                   wk_09 = "d")
+                  )
+cases %>% 
+  sample_n_from_df(10)
+
+```
+The data.gov.uk case data records cases across multiple columns. Each of the columns corresponds to a numbered week (starting from week 5 in 2020). So, below I transform the case data so it is in the tidy format expected by tidyverse tools (e.g. ggplot2).
+
+```{r, import covid 2}
+
+# select all column names for variables reporting case data
+case_colnames <- colnames(cases)[str_detect(colnames(cases),"^wk_")]
+
+# find the first and last columns containing weekly cases
+first_case_col <- case_colnames[1]
+last_case_col <- case_colnames[length(case_colnames)]
+
+# Tidy data and process dates
+cases_tidy <- cases %>% 
+  pivot_longer(cols = all_of(first_case_col):all_of(last_case_col), 
+               names_to = "week", values_to = "cases") %>%
+  
+  # convert week numbers to w/c dates
+  mutate(week = as.integer(str_sub(week, 4, 5))) %>%
+  mutate(week_commencing = lubridate::ymd( "2019-12-30" ) + lubridate::weeks(week - 1))
+
+cases_tidy
+```
+## 1.4. Geographic look tables
+As noted above, some geographic aggregation of the access to public green space data will be required. Specifically, aggregation from the LSOA to MSOA level. A look-up table for this mapping from LSOAs to MSOAs is available for the [ONS](https://data.gov.uk/dataset/ec39697d-e7f4-4419-a146-0b9c9c15ee06/output-area-to-lsoa-to-msoa-to-local-authority-district-december-2017-lookup-with-area-classifications-in-great-britain) and is imported below.
+
+```{r}
+geog_lookup <- read_csv("./Data/Output_Area_to_LSOA_to_MSOA_to_Local_Authority_District__December_2017__Lookup_with_Area_Classifications_in_Great_Britain.csv")
+geog_lookup
+```
+
+## 2. Identifying variables of interest
+
+### 2.1. Private green space
+
+two sub groups (Flats and Houses) within the data
+
+```{r}
+priv_gs_focus <- private_green_space %>% 
+  select(`MSOA code`, `MSOA name`, `T: Address count`, 
+         `T: Percentage of adresses with private outdoor space`,
+         `T: Average size of private outdoor space (m2)`
+         ) %>% 
+  rename(address_count = `T: Address count`,
+         perc_garden = `T: Percentage of adresses with private outdoor space`,
+         ave_garden_size = `T: Average size of private outdoor space (m2)`)
+
+```
+
+```{r}
+p <- ggplot(data = priv_gs_focus,
+            mapping = aes(x = perc_garden)
+            )
+
+p + geom_histogram()
+```
+```{r}
+p <- ggplot(data = priv_gs_focus,
+            mapping = aes(x = log10(ave_garden_size))
+            )
+
+p + geom_histogram()
+```
+
+### 2.2. Public green space
+
+### 2.3. Covid-19 cases
+
+
+## 3. Analysing the relationships between access to green space and Covid-19 cases
