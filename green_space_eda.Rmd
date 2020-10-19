@@ -101,10 +101,10 @@ cases_tidy <- cases %>%
 
 cases_tidy
 ```
-## 1.4. Geographic look tables
+## 1.4. Geographic lookup tables
 As noted above, some geographic aggregation of the access to public green space data will be required. Specifically, aggregation from the LSOA to MSOA level. A look-up table for this mapping from LSOAs to MSOAs is available for the [ONS](https://data.gov.uk/dataset/ec39697d-e7f4-4419-a146-0b9c9c15ee06/output-area-to-lsoa-to-msoa-to-local-authority-district-december-2017-lookup-with-area-classifications-in-great-britain) and is imported below.
 
-```{r}
+```{r, import lookup 1, echo=FALSE}
 geog_lookup <- read_csv("./Data/Output_Area_to_LSOA_to_MSOA_to_Local_Authority_District__December_2017__Lookup_with_Area_Classifications_in_Great_Britain.csv")
 geog_lookup
 ```
@@ -113,7 +113,7 @@ geog_lookup
 
 ### 2.1. Private green space
 
-two sub groups (Flats and Houses) within the data
+two sub groups (Flats and Houses) within the data, at this stage interested in both (also provided)
 
 ```{r}
 priv_gs_focus <- private_green_space %>% 
@@ -126,14 +126,103 @@ priv_gs_focus <- private_green_space %>%
          ave_garden_size = `T: Average size of private outdoor space (m2)`)
 
 ```
+```{r, echo=FALSE, message=FALSE}
+num_NA <- priv_gs_focus %>% 
+  map(~ sum(is.na(.x))) %>% 
+  as_tibble() %>% 
+  sum()
+
+priv_gs_focus_dim <- dim(priv_gs_focus)
+```
+
+There `r num_NA` NA values present across all columns in the `priv_gs_focus` dataframe. Given the number of NAs is small relative to the size of the dataframe (`r priv_gs_focus_dim`), and this is an exploratory data analysis I'll leave NAs to be handled/removed by the plotting functions used below.
+
+
+[How to plot boxplot and histogram and align](https://stackoverflow.com/questions/58306727/perfectly-align-horizontal-boxplot-under-histogram)
 
 ```{r}
-p <- ggplot(data = priv_gs_focus,
-            mapping = aes(x = perc_garden)
+
+format_hist_box_pair_plot <- function(x_lims){
+  list(scale_x_continuous(limits= x_lims), 
+       theme_minimal()
+       )
+}
+
+hist_box_pair_plot <- function(df, x_var, x_lims, x_label, y_label,
+                               colour = "grey40", ...){
+  
+  histogram <- ggplot(data = df,
+              mapping = aes_string(x = x_var))
+  
+  histogram <- histogram + geom_histogram(fill = colour, binwidth = 0.01) +
+    
+    scale_x_continuous(labels = NULL) +
+    labs(x = NULL, y = y_label) +
+    format_hist_box_pair_plot(x_lims)
+    
+  box_plot <- ggplot(data = df,
+              mapping = aes_string(x = x_var))
+  
+  box_plot <- box_plot + geom_boxplot(colour = colour) +
+
+    scale_y_continuous(labels = NULL) +
+    labs(x = x_label) +
+    format_hist_box_pair_plot(x_lims)
+  
+  #combine and align the histogram and box plot
+  cowplot::plot_grid(histogram, box_plot,
+                     ncol = 1, rel_heights = c(3, 1),
+                     align = 'v', axis = 'lr')
+}
+
+hist_box_pair_plot(priv_gs_focus, "perc_garden",
+                   x_label = "Percentage of adresses with private outdoor space",
+                   y_label = "number of MSOAs",
+                   x_lims = c(0, 1)
+                   ) 
+
+```
+https://cran.r-project.org/web/packages/dplyr/vignettes/programming.html
+
+```{r}
+
+var_summary <- function(df, var, na.rm = TRUE) {
+ 
+  summary <- df %>% 
+    summarise(min = min({{var}}, na.rm = na.rm),
+              q1 = quantile({{var}}, probs = 0.25, na.rm = na.rm),
+              median = median({{var}}, na.rm = na.rm),
+              q3 = quantile({{var}}, probs = 0.75, na.rm = na.rm),
+              max = max({{var}}, na.rm = na.rm),
+              mean = mean({{var}}, na.rm = na.rm),
+              sd = sd({{var}}, na.rm = na.rm)
+              ) 
+  
+  summary[1, "variable"] <- toString(deparse(substitute(var)))
+  summary %>% 
+    relocate(variable, .before = min)
+  
+}
+
+var_summary(priv_gs_focus, perc_garden)
+
+
+
+
+
+```
+
+
+
+```{r}
+p <- ggplot(data = subset(priv_gs_focus, subset = ave_garden_size < 2000), 
+            mapping = aes(x = ave_garden_size)
             )
 
-p + geom_histogram()
+p + geom_histogram(bins = 100)
 ```
+
+
 ```{r}
 p <- ggplot(data = priv_gs_focus,
             mapping = aes(x = log10(ave_garden_size))
