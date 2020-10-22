@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, echo=FALSE, message=FALSE}
 library(tidyverse)
 library(readxl)
+library(purrr)
 
 source("r_code/covid_helper_functions.R")
 ```
@@ -149,14 +150,13 @@ format_hist_box_pair_plot <- function(x_lims){
 }
 
 hist_box_pair_plot <- function(df, x_var, x_lims, x_label, y_label,
-                               colour = "grey40", ...){
+                               colour = "grey40", binwidth = 0.01, ...){
   
   histogram <- ggplot(data = df,
               mapping = aes_string(x = x_var))
   
-  histogram <- histogram + geom_histogram(fill = colour, binwidth = 0.01) +
+  histogram <- histogram + geom_histogram(fill = colour, binwidth = binwidth) +
     
-    scale_x_continuous(labels = NULL) +
     labs(x = NULL, y = y_label) +
     format_hist_box_pair_plot(x_lims)
     
@@ -182,7 +182,7 @@ hist_box_pair_plot(priv_gs_focus, "perc_garden",
                    ) 
 
 ```
-https://cran.r-project.org/web/packages/dplyr/vignettes/programming.html
+On how to pass variable names to function which wrapper around dplyr function calls https://cran.r-project.org/web/packages/dplyr/vignettes/programming.html
 
 ```{r}
 
@@ -194,6 +194,7 @@ var_summary <- function(df, var, na.rm = TRUE) {
               median = median({{var}}, na.rm = na.rm),
               q3 = quantile({{var}}, probs = 0.75, na.rm = na.rm),
               max = max({{var}}, na.rm = na.rm),
+              iqr = IQR({{var}}, na.rm = na.rm),
               mean = mean({{var}}, na.rm = na.rm),
               sd = sd({{var}}, na.rm = na.rm)
               ) 
@@ -205,13 +206,76 @@ var_summary <- function(df, var, na.rm = TRUE) {
 }
 
 var_summary(priv_gs_focus, perc_garden)
+```
+
+```{r}
+ 
+var_summary_2 <- function(column, na.rm = TRUE) {
+  
+  tibble(
+    min = min(column, na.rm = na.rm),
+    q1 = quantile(column, probs = 0.25, na.rm = na.rm),
+    median = median(column, na.rm = na.rm),
+    q3 = quantile(column, probs = 0.75, na.rm = na.rm),
+    max = max(column, na.rm = na.rm),
+    iqr = IQR(column, na.rm = na.rm),
+    mean = mean(column, na.rm = na.rm),
+    sd = sd(column, na.rm = na.rm)
+  )
+  
+  # summary <- column %>% 
+  #   summarise(min = min(., na.rm = na.rm)
+  #             # q1 = quantile({{var}}, probs = 0.25, na.rm = na.rm),
+  #             # median = median({{var}}, na.rm = na.rm),
+  #             # q3 = quantile({{var}}, probs = 0.75, na.rm = na.rm),
+  #             # max = max({{var}}, na.rm = na.rm),
+  #             # iqr = IQR({{var}}, na.rm = na.rm),
+  #             # mean = mean({{var}}, na.rm = na.rm),
+  #             # sd = sd({{var}}, na.rm = na.rm)
+  #             ) 
+  # 
+  # # summary[1, "variable"] <- toString(deparse(substitute(var)))
+  # # summary %>% 
+  # #   relocate(variable, .before = min)
+  # summary
+  
+}
+# apply the var_summary function to numeric columns in the df
+#var_summary_2(priv_gs_focus$perc_garden)
+
+# priv_gs_focus %>%
+#   names() %>% 
+#   purrr::map(var_summary_2, .data[[.x]])
+
+variable_name <- priv_gs_focus %>%
+  select_if(is.numeric) %>% 
+  names()
+
+summary_priv_gs_focus <- priv_gs_focus %>%
+  select_if(is.numeric) %>% 
+  purrr::map_dfr(var_summary_2) %>% 
+  add_column(variable_name, .before = 1)
 
 
 
+# summary_priv_gs_focus$variable <- num_col_names
 
+summary_priv_gs_focus
 
 ```
 
+
+```{r}
+hist_box_pair_plot(priv_gs_focus, "ave_garden_size",
+                   x_label = "Average size private outdoor space (m2)",
+                   y_label = "number of MSOAs",
+                   x_lims = c(0, 2000),
+                   binwidth = 50
+                   )
+
+
+var_summary(priv_gs_focus, ave_garden_size)
+```
 
 
 ```{r}
