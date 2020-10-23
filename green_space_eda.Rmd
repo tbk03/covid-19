@@ -270,6 +270,11 @@ p + geom_histogram()
 
 ### 2.2. Public green space
 
+```{r}
+public_green_space
+```
+
+
 ### 2.3. Covid-19 cases
 
 ```{r}
@@ -288,6 +293,7 @@ cases_focus
 
 ## 3. Analysing the relationships between access to green space and Covid-19 cases
 
+### 3.1. Private green space and case numbers
 
 ```{r}
 cases_priv_gs <- cases_focus %>% 
@@ -321,5 +327,9 @@ p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 250),
 p + geom_jitter(alpha = 0.3) +
   scale_y_continuous(limits = c(0, 1500))
 ```
+### 3.2. Public green space and case numbers
 
+```{r}
+
+```
 
