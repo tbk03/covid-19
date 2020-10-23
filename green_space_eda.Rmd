@@ -210,8 +210,12 @@ var_summary(priv_gs_focus, perc_garden)
 
 ```{r}
  
-var_summary_2 <- function(column, na.rm = TRUE) {
+var_summary_stats <- function(column, na.rm = TRUE) {
+  # the argument column is expected to be numeric vector, as this function was designed 
+  # to work with purrr::map (which passes dataframe columns as vectors to the function
+  # being mapped)
   
+  # return a single row dataframe containing the summary stats for column
   tibble(
     min = min(column, na.rm = na.rm),
     q1 = quantile(column, probs = 0.25, na.rm = na.rm),
@@ -222,45 +226,23 @@ var_summary_2 <- function(column, na.rm = TRUE) {
     mean = mean(column, na.rm = na.rm),
     sd = sd(column, na.rm = na.rm)
   )
-  
-  # summary <- column %>% 
-  #   summarise(min = min(., na.rm = na.rm)
-  #             # q1 = quantile({{var}}, probs = 0.25, na.rm = na.rm),
-  #             # median = median({{var}}, na.rm = na.rm),
-  #             # q3 = quantile({{var}}, probs = 0.75, na.rm = na.rm),
-  #             # max = max({{var}}, na.rm = na.rm),
-  #             # iqr = IQR({{var}}, na.rm = na.rm),
-  #             # mean = mean({{var}}, na.rm = na.rm),
-  #             # sd = sd({{var}}, na.rm = na.rm)
-  #             ) 
-  # 
-  # # summary[1, "variable"] <- toString(deparse(substitute(var)))
-  # # summary %>% 
-  # #   relocate(variable, .before = min)
-  # summary
-  
 }
-# apply the var_summary function to numeric columns in the df
-#var_summary_2(priv_gs_focus$perc_garden)
 
-# priv_gs_focus %>%
-#   names() %>% 
-#   purrr::map(var_summary_2, .data[[.x]])
+df_summary_stats <- function(df){
+  
+  # get the names of the numeric variables in the dataframe
+  variable_name <- df %>%
+    select_if(is.numeric) %>% 
+    names()
 
-variable_name <- priv_gs_focus %>%
-  select_if(is.numeric) %>% 
-  names()
-
-summary_priv_gs_focus <- priv_gs_focus %>%
-  select_if(is.numeric) %>% 
-  purrr::map_dfr(var_summary_2) %>% 
-  add_column(variable_name, .before = 1)
-
-
-
-# summary_priv_gs_focus$variable <- num_col_names
-
-summary_priv_gs_focus
+  # return a dataframe containing summary stats for each numeric variable in df
+  df %>%
+    select_if(is.numeric) %>% 
+    purrr::map_dfr(var_summary_stats) %>% 
+    add_column(variable_name, .before = 1)
+}
+  
+df_summary_stats(priv_gs_focus)
 
 ```
 
@@ -279,15 +261,6 @@ var_summary(priv_gs_focus, ave_garden_size)
 
 
 ```{r}
-p <- ggplot(data = subset(priv_gs_focus, subset = ave_garden_size < 2000), 
-            mapping = aes(x = ave_garden_size)
-            )
-
-p + geom_histogram(bins = 100)
-```
-
-
-```{r}
 p <- ggplot(data = priv_gs_focus,
             mapping = aes(x = log10(ave_garden_size))
             )
@@ -299,5 +272,54 @@ p + geom_histogram()
 
 ### 2.3. Covid-19 cases
 
+```{r}
+cases_focus <- cases_tidy %>% 
+  select(msoa11_cd, msoa11_hclnm, week_commencing, cases) %>% 
+  arrange(msoa11_cd, week_commencing) %>%
+  
+  group_by(msoa11_cd) %>% 
+  mutate(culm_cases = cumsum(ifelse(is.na(cases), 0, cases))         )
+
+cases_focus
+  
+
+```
+
 
 ## 3. Analysing the relationships between access to green space and Covid-19 cases
+
+
+```{r}
+cases_priv_gs <- cases_focus %>% 
+  left_join(priv_gs_focus, by = c("msoa11_cd" = "MSOA code"))
+
+cases_priv_gs
+```
+```{r}
+
+total_cases_priv_gs <- cases_focus %>% 
+  group_by(msoa11_cd) %>% 
+  summarise(total_cases = sum(cases, na.rm = TRUE)) %>% 
+  left_join(priv_gs_focus, by = c("msoa11_cd" = "MSOA code"))
+  
+
+p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 10),
+            mapping = aes(x = perc_garden,
+                          y = total_cases)
+            )
+
+p + geom_jitter(alpha = 0.3) +
+  scale_y_continuous(limits = c(0, 1500))
+```
+
+```{r}
+p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 250),
+            mapping = aes(x = ave_garden_size,
+                          y = total_cases)
+            )
+
+p + geom_jitter(alpha = 0.3) +
+  scale_y_continuous(limits = c(0, 1500))
+```
+
+
