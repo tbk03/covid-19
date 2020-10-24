@@ -49,8 +49,8 @@ The ONS (Office for National Statistics) also provides [data on access to public
 It should be noted that this access to public green space data is provided at a finer geographic resolution than the other datasets used in this analysis, which are provided at MSOA granularity.  Each MSOA is broken down in a number of LSOAs, so later on it will be straight forward (with the help of a lookup table) to aggregate this data to enable comparision with the other data sources.
 
 ```{r, import gs 2}
-public_green_space <-  read_excel("./Data/ospublicgreenspacereferencetables.xlsx", sheet = "LSOA Parks and Playing Fields")
-public_green_space %>% 
+parks <-  read_excel("./Data/ospublicgreenspacereferencetables.xlsx", sheet = "LAD Parks only")
+parks %>% 
   sample_n_from_df(10)
 ```
 
@@ -269,9 +269,17 @@ p + geom_histogram()
 ```
 
 ### 2.2. Public green space
-
 ```{r}
-public_green_space
+count_NA_in_df = function(df){
+  df %>% 
+    map(~ sum(is.na(.))) %>% 
+    as_tibble()
+}
+
+parks
+
+count_NA_in_df(parks)
+
 ```
 
 
@@ -327,9 +335,64 @@ p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 250),
 p + geom_jitter(alpha = 0.3) +
   scale_y_continuous(limits = c(0, 1500))
 ```
-### 3.2. Public green space and case numbers
+### 3.2. Parks and case numbers
+
+ONS data on access to parks is available at LSOA and LAD (Local Authority District) scales, whereas data.gov.uk Covid-19 case data is provided at the MSOA scale. Each MSOA is made up of a number of LSOAs, but it not clear how best average the variables detailing access to green space over multiple LSOAs (given that LSOAs can be different sizes in terms of population and geography). So, making the case and green space datasets comparable at the MSOA scale is challenging. However, each LAD is made up of multiple MSOAs, and it is more straight forward to aggregate Covid-19 case numbers from the MSOA scale to LAD scale (simply by addition). Case numbers can then be compared to the access to green space dataset, where LAD scale statistics are provided by the ONS. Presumably the ONS has taken an appropriate approach to translating the variables at different scale, an approach which is likely to be more sophisticated and better informed than an approach I might devise and implement. 
 
 ```{r}
+msoa_to_lad <- geog_lookup %>%
+  select(MSOA11CD, MSOA11NM, LAD17CD, LAD17NM)
+```
+
+
+```{r}
+cases_parks <- cases_focus %>% 
+  left_join(msoa_to_lad, by = c("msoa11_cd" = "MSOA11CD")) %>% 
+  group_by(LAD17CD) %>%   
+  summarise(total_cases = sum(cases, na.rm = TRUE)) %>%
+  left_join(parks, by = c("LAD17CD" = "LAD code"))
+
+cases_parks
 
 ```
 
+
+
+
+```{r}
+p <- ggplot(data = cases_parks,
+            mapping = aes(x = `Average distance to nearest Park (m)`,
+                          y = total_cases)
+            )
+
+p + geom_point()
+```
+```{r}
+p <- ggplot(data = cases_parks,
+            mapping = aes(x = `Average size of nearest Park (m2)`,
+                          y = total_cases)
+            )
+
+p + geom_point()
+```
+
+Adjust graph for population of LAD - cases per 100,000 population
+
+```{r}
+p <- ggplot(data = subset(cases_parks, total_cases > 0),
+            mapping = aes(x = `Average number of  Parks within one km`,
+                          y = log(total_cases))
+            )
+
+p + geom_point() +
+  geom_smooth()
+```
+
+```{r}
+p <- ggplot(data = cases_parks,
+            mapping = aes(x = log(`Average combined size of  Parks within 1km  (m2)`),
+                          y = log(total_cases))
+            )
+
+p + geom_point()
+```
