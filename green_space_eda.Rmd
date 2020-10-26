@@ -110,6 +110,15 @@ geog_lookup <- read_csv("./Data/Output_Area_to_LSOA_to_MSOA_to_Local_Authority_D
 geog_lookup
 ```
 
+## 1.5. Population data
+
+```{r}
+populations <- read_csv("./Data/ons_mid_2019_population_estimates.csv")
+populations
+
+```
+
+
 ## 2. Identifying variables of interest
 
 ### 2.1. Private green space
@@ -272,7 +281,7 @@ p + geom_histogram()
 ```{r}
 count_NA_in_df = function(df){
   df %>% 
-    map(~ sum(is.na(.))) %>% 
+    map(~ sum(is.na(.x))) %>% 
     as_tibble()
 }
 
@@ -294,6 +303,8 @@ cases_focus <- cases_tidy %>%
   mutate(culm_cases = cumsum(ifelse(is.na(cases), 0, cases))         )
 
 cases_focus
+
+count_NA_in_df(cases_focus)
   
 
 ```
@@ -316,7 +327,18 @@ total_cases_priv_gs <- cases_focus %>%
   summarise(total_cases = sum(cases, na.rm = TRUE)) %>% 
   left_join(priv_gs_focus, by = c("msoa11_cd" = "MSOA code"))
   
+```
 
+```{r}
+prop_pkey_in_fkey <- function(){
+  
+}
+
+
+```
+
+
+```{r}
 p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 10),
             mapping = aes(x = perc_garden,
                           y = total_cases)
@@ -325,6 +347,7 @@ p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 10),
 p + geom_jitter(alpha = 0.3) +
   scale_y_continuous(limits = c(0, 1500))
 ```
+
 
 ```{r}
 p <- ggplot(data = subset(total_cases_priv_gs, total_cases > 250),
@@ -341,14 +364,25 @@ ONS data on access to parks is available at LSOA and LAD (Local Authority Distri
 
 ```{r}
 msoa_to_lad <- geog_lookup %>%
-  select(MSOA11CD, MSOA11NM, LAD17CD, LAD17NM)
+  select(MSOA11CD, MSOA11NM, LAD17CD, LAD17NM) %>% 
+  
+  # remove duplicate entries of each combination
+  unique()
+
+msoa_to_lad
+
+# geog_lookup %>% 
+#   filter(MSOA11CD == "E02000001") %>% 
+#   unique()
 ```
 
 
 ```{r}
+cases_focus
+
 cases_parks <- cases_focus %>% 
-  left_join(msoa_to_lad, by = c("msoa11_cd" = "MSOA11CD")) %>% 
-  group_by(LAD17CD) %>%   
+  left_join(msoa_to_lad, by = c("msoa11_cd" = "MSOA11CD")) %>%
+  group_by(LAD17CD) %>%
   summarise(total_cases = sum(cases, na.rm = TRUE)) %>%
   left_join(parks, by = c("LAD17CD" = "LAD code"))
 
@@ -356,36 +390,65 @@ cases_parks
 
 ```
 
+Check the extent of population data coverage for Local Authority Districts.
 
+```{r}
+count_NA_in_df(cases_parks)
+
+
+pop_figures <- cases_parks$LAD17CD %in% populations$Code
+cases_parks$`LAD name`[!pop_figures]
+```
+
+```{r}
+
+populations_minimal <- populations %>% 
+  select(Code, Name, Geography1, `All ages`)
+
+cases_parks_pop <- cases_parks %>% 
+  left_join(populations_minimal, by = c("LAD17CD" = "Code")) %>% 
+  mutate(cases_per_100000_pop = (total_cases / `All ages`) * 1e+5) 
+
+cases_parks_pop
+```
+
+```{r}
+format_park_cases_plot <- function(){
+  list(geom_point(alpha = 0.4),
+       geom_smooth(colour = "grey50", fill = "grey90"),
+       theme_minimal()
+       )
+}
+```
 
 
 ```{r}
-p <- ggplot(data = cases_parks,
+p <- ggplot(data = cases_parks_pop,
             mapping = aes(x = `Average distance to nearest Park (m)`,
-                          y = total_cases)
+                          y = log(cases_per_100000_pop))
             )
 
-p + geom_point()
+p + format_park_cases_plot()
+  
 ```
 ```{r}
-p <- ggplot(data = cases_parks,
-            mapping = aes(x = `Average size of nearest Park (m2)`,
-                          y = total_cases)
+p <- ggplot(data = cases_parks_pop,
+            mapping = aes(x = log(`Average size of nearest Park (m2)`),
+                          y = log(cases_per_100000_pop))
             )
 
-p + geom_point()
+p + format_park_cases_plot()
 ```
 
 Adjust graph for population of LAD - cases per 100,000 population
 
 ```{r}
-p <- ggplot(data = subset(cases_parks, total_cases > 0),
+p <- ggplot(data = subset(cases_parks_pop),
             mapping = aes(x = `Average number of  Parks within one km`,
-                          y = log(total_cases))
+                          y = log(cases_per_100000_pop))
             )
 
-p + geom_point() +
-  geom_smooth()
+p + format_park_cases_plot()
 ```
 
 ```{r}
@@ -394,5 +457,5 @@ p <- ggplot(data = cases_parks,
                           y = log(total_cases))
             )
 
-p + geom_point()
+p + format_park_cases_plot()
 ```
