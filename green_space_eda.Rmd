@@ -233,6 +233,9 @@ df_summary_stats <- function(df){
   
 df_summary_stats(priv_gs_focus)
 
+priv_gs_focus %>% 
+  summarise(across(everything(), ~sum(is.na(.x))))
+
 ```
 
 
