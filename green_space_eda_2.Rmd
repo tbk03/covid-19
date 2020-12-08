@@ -1,0 +1,452 @@
+---
+title: "green space EDA"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(purrr)
+
+source("r_code/covid_helper_functions.R")
+```
+Objectives:
+
+* personal interest in the topic
++ green gym
++ covid experience
+
+https://blogs.bmj.com/bmj/2020/07/03/covid-19-has-highlighted-the-inadequate-and-unequal-access-to-high-quality-green-spaces/
+https://www.weforum.org/agenda/2020/08/parks-green-spaces-mental-health-access-equality/
+
+* Develop 
+
+
+Scale of analysis: Local Authority District (the finest geographic granularity available for all datasets)
+Geographic scope: England (case data at MSOA level available for England only)
+
+## 1. Import and tidy data sources
+
+### 1.1. Access to private green space (gardens)
+The ONS (Office for National Statistics) provides [data on access to private green space](https://www.ons.gov.uk/economy/environmentalaccounts/datasets/accesstogardensandpublicgreenspaceingreatbritain) (i.e. access to gardens) for each Local Authority District in Great Britain. Here I am using the most recent April 2020 edition of the data. I quickly, manually edited the ONS excel file to make it easier use the `read_excel` function for data import. Given it is unlikely that the ONS data will be updated during the course of this analysis, it was preferable to go for the quicker manual process than investing time in a re-producible programmatic approach.
+
+```{r, import gs 1}
+
+gardens <- read_excel("./Data/osprivateoutdoorspacereferencetables.xlsx", sheet = "LAD gardens_2")
+gardens %>% 
+  sample_n_from_df(10)
+```
+
+### 1.2. Access to public green space (parks)
+The ONS (Office for National Statistics) also provides [data on access to public green space](https://www.ons.gov.uk/economy/environmentalaccounts/datasets/accesstogardensandpublicgreenspaceingreatbritain) (i.e. access to parks and playing fields) for each Local Authority District in Great Britain. In this case no manual editing of the ONS excel file was required. 
+
+```{r, import gs 2}
+parks <-  read_excel("./Data/ospublicgreenspacereferencetables.xlsx", sheet = "LAD Parks only")
+parks %>% 
+  sample_n_from_df(10)
+```
+
+### 1.3. Covid cases
+[data.gov.uk](https://coronavirus.data.gov.uk/details/download) provides data on the number of Covid-19 cases (as confirmed by positive tests) occurring in each English Local Authority District. 
+
+```{r, import covid 1, message=FALSE}
+covid_cases <- read_csv("./Data/ltla_2020-12-08.csv")
+                  
+covid_cases %>% 
+  sample_n_from_df(10)
+
+```
+
+
+## 1.5. Population data
+The ONS also provides [data](https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/datasets/populationestimatesforukenglandandwalesscotlandandnorthernireland) esitmating the populations resident in Local Authority District. This will be helpful later on when  
+
+```{r}
+populations <- read_csv("./Data/ons_mid_2019_population_estimates.csv")
+populations
+
+```
+
+## 2. Transform datasets for analysis
+
+### 2.1. Focus down on variables of interest
+
+*Private green space: * The ONS provides data on private green space separately for flats and house, additionally totals (including both flats and houses) are provided. In this case just the totals are likely to be of interest, as I am not expecting to distinguish between types of housing stock in the analysis the relationship between access to green space and Covid-19 case numbers.
+
+```{r}
+gardens <- gardens %>% 
+  filter(`Country name` == "England") %>% 
+  select(`LAD code`, `LAD name`, `T_Address count`, 
+         `T_Percentage of adresses with private outdoor space`, 
+         `T_Average size of private outdoor space (m2)`
+         ) %>% 
+  rename(address_count = `T_Address count`,
+         perc_with_garden = `T_Percentage of adresses with private outdoor space`,
+         ave_garden_size = `T_Average size of private outdoor space (m2)`
+         )
+
+gardens
+```
+*Public green space: *
+
+```{r}
+parks <- parks %>% 
+  filter(`Country name` == "England") %>% 
+  select(-`Country code`, -`Country name`, -`Region code`, -`Region name`)
+
+parks
+```
+
+
+*Covid_19_cases: * What do the NAs mean?
+```{r}
+covid_cases <- covid_cases %>% 
+  select(-areaType, -newCasesBySpecimenDateRollingSum, -newCasesBySpecimenDateRollingRate) %>% 
+  rename(new_cases = newCasesBySpecimenDate)
+
+summary(covid_cases)
+
+covid_cases %>% 
+  count(new_cases) %>% 
+  head(1)
+```
+
+
+### 2.2. Join datasets
+
+### 2.3. Calculate 
+
+* 
+* calculate case rates per 100,000 population
+
+
+## 3. Visualisation and interpretation
+
+
+## 4. Conclusions
+
+
+## 2. Identifying variables of interest
+
+### 2.1. Private green space
+
+two sub groups (Flats and Houses) within the data, at this stage interested in both (also provided)
+
+```{r}
+priv_gs_focus <- private_green_space %>% 
+  select(`LAD code`, `LAD name`, `T_Address count`, 
+         `T_Percentage of adresses with private outdoor space`,
+         `T_Average size of private outdoor space (m2)`
+         ) %>% 
+  rename(address_count = `T_Address count`,
+         perc_garden = `T_Percentage of adresses with private outdoor space`,
+         ave_garden_size = `T_Average size of private outdoor space (m2)`)
+
+
+priv_gs_focus
+
+```
+```{r, echo=FALSE, message=FALSE}
+num_NA <- priv_gs_focus %>% 
+  map(~ sum(is.na(.x))) %>% 
+  as_tibble() %>% 
+  sum()
+
+priv_gs_focus_dim <- dim(priv_gs_focus)
+```
+
+There `r num_NA` NA values present across all columns in the `priv_gs_focus` dataframe. Given the number of NAs is small relative to the size of the dataframe (`r priv_gs_focus_dim`), and this is an exploratory data analysis I'll leave NAs to be handled/removed by the plotting functions used below.
+
+
+[How to plot boxplot and histogram and align](https://stackoverflow.com/questions/58306727/perfectly-align-horizontal-boxplot-under-histogram)
+
+```{r}
+
+format_hist_box_pair_plot <- function(x_lims){
+  list(scale_x_continuous(limits= x_lims), 
+       theme_minimal()
+       )
+}
+
+hist_box_pair_plot <- function(df, x_var, x_lims, x_label, y_label,
+                               colour = "grey40", binwidth = 0.01, ...){
+  
+  histogram <- ggplot(data = df,
+              mapping = aes_string(x = x_var))
+  
+  histogram <- histogram + geom_histogram(fill = colour, binwidth = binwidth) +
+    
+    labs(x = NULL, y = y_label) +
+    format_hist_box_pair_plot(x_lims)
+    
+  box_plot <- ggplot(data = df,
+              mapping = aes_string(x = x_var))
+  
+  box_plot <- box_plot + geom_boxplot(colour = colour) +
+
+    scale_y_continuous(labels = NULL) +
+    labs(x = x_label) +
+    format_hist_box_pair_plot(x_lims)
+  
+  #combine and align the histogram and box plot
+  cowplot::plot_grid(histogram, box_plot,
+                     ncol = 1, rel_heights = c(3, 1),
+                     align = 'v', axis = 'lr')
+}
+
+hist_box_pair_plot(priv_gs_focus, "perc_garden",
+                   x_label = "Percentage of adresses with private outdoor space",
+                   y_label = "number of Local Authority Districts",
+                   x_lims = c(0, 1)
+                   ) 
+
+```
+On how to pass variable names to function which wrapper around dplyr function calls https://cran.r-project.org/web/packages/dplyr/vignettes/programming.html
+
+
+```{r}
+ 
+var_summary_stats <- function(column, na.rm = TRUE) {
+  # the argument column is expected to be numeric vector, as this function was designed 
+  # to work with purrr::map (which passes dataframe columns as vectors to the function
+  # being mapped)
+  
+  # return a single row dataframe containing the summary stats for column
+  tibble(
+    min = min(column, na.rm = na.rm),
+    q1 = quantile(column, probs = 0.25, na.rm = na.rm),
+    median = median(column, na.rm = na.rm),
+    q3 = quantile(column, probs = 0.75, na.rm = na.rm),
+    max = max(column, na.rm = na.rm),
+    iqr = IQR(column, na.rm = na.rm),
+    mean = mean(column, na.rm = na.rm),
+    sd = sd(column, na.rm = na.rm)
+  )
+}
+
+df_summary_stats <- function(df){
+  
+  # get the names of the numeric variables in the dataframe
+  variable_name <- df %>%
+    select_if(is.numeric) %>% 
+    names()
+
+  # return a dataframe containing summary stats for each numeric variable in df
+  df %>%
+    select_if(is.numeric) %>% 
+    purrr::map_dfr(var_summary_stats) %>% 
+    add_column(variable_name, .before = 1)
+}
+  
+df_summary_stats(priv_gs_focus)
+
+summary_functions <- list(mean = ~ mean(.x, na.rm = T), 
+                          sd = ~ sd(.x, na.rm = T)
+                          )
+
+priv_gs_focus %>% 
+  summarise(across(where(is_numeric), summary_functions 
+                   )
+            )
+
+```
+
+
+```{r}
+hist_box_pair_plot(priv_gs_focus, "ave_garden_size",
+                   x_label = "Average size private outdoor space (m2)",
+                   y_label = "number of Local Authority Districts",
+                   x_lims = c(0, 2000),
+                   binwidth = 50
+                   )
+
+```
+
+
+```{r}
+p <- ggplot(data = priv_gs_focus,
+            mapping = aes(x = log10(ave_garden_size))
+            )
+
+p + geom_histogram()
+```
+
+### 2.2. Public green space
+```{r}
+count_NA_in_df = function(df){
+  df %>% 
+    map(~ sum(is.na(.x))) %>% 
+    as_tibble()
+}
+
+parks
+
+count_NA_in_df(parks)
+
+```
+
+
+### 2.3. Covid-19 cases
+
+```{r}
+cases_focus <- cases_tidy %>% 
+  select(msoa11_cd, msoa11_hclnm, week_commencing, cases) %>% 
+  arrange(msoa11_cd, week_commencing) %>%
+  
+  group_by(msoa11_cd) %>% 
+  mutate(culm_cases = cumsum(ifelse(is.na(cases), 0, cases))         )
+
+cases_focus
+
+count_NA_in_df(cases_focus)
+  
+
+```
+
+calculating infections per 100,000
+
+```{r}
+
+#process geog lookup table
+msoa_to_lad <- geog_lookup %>%
+  select(MSOA11CD, MSOA11NM, LAD17CD, LAD17NM) %>% 
+  # remove duplicate entries of each combination
+  unique()
+
+# process populations table
+populations_minimal <- populations %>% 
+  select(Code, Name, Geography1, `All ages`)
+
+# join cases with geog lookup
+cases_lad <- cases_focus %>% 
+  left_join(msoa_to_lad, by = c("msoa11_cd" = "MSOA11CD")) %>%
+  group_by(LAD17CD, LAD17NM) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE))
+  
+# then join with population and calculate positive tests per 100,000 people
+cases_lad_pop <- cases_lad %>%
+  left_join(populations_minimal, by = c("LAD17CD" = "Code")) %>% 
+  mutate(cases_per_100000_pop = (total_cases / `All ages`) * 1e+5)
+
+# then join with private green space data
+cases_lad_pop_gardens <- cases_lad_pop %>% 
+  left_join(priv_gs_focus, by = c("LAD17CD" = "LAD code"))
+
+# then join with parks data
+cases_lad_pop_gardens_parks <- cases_lad_pop_gardens %>% 
+  left_join(parks, by = c("LAD17CD" = "LAD code"))
+
+# remove some redundant columns
+analysis_df <- cases_lad_pop_gardens_parks %>% 
+  select(-`LAD name.y`, - `LAD name.x`, - Name)
+
+analysis_df
+```
+
+## 3. Analysing the relationships between access to green space and Covid-19 cases
+
+
+### 3.2. Parks and case numbers
+
+ONS data on access to parks is available at LSOA and LAD (Local Authority District) scales, whereas data.gov.uk Covid-19 case data is provided at the MSOA scale. Each MSOA is made up of a number of LSOAs, but it not clear how best average the variables detailing access to green space over multiple LSOAs (given that LSOAs can be different sizes in terms of population and geography). So, making the case and green space datasets comparable at the MSOA scale is challenging. However, each LAD is made up of multiple MSOAs, and it is more straight forward to aggregate Covid-19 case numbers from the MSOA scale to LAD scale (simply by addition). Case numbers can then be compared to the access to green space dataset, where LAD scale statistics are provided by the ONS. Presumably the ONS has taken an appropriate approach to translating the variables at different scale, an approach which is likely to be more sophisticated and better informed than an approach I might devise and implement. 
+
+
+
+```{r}
+format_park_cases_plot <- function(){
+  list(geom_point(alpha = 0.4),
+       geom_smooth(colour = "grey50", fill = "grey90"),
+       theme_minimal()
+       )
+}
+```
+
+
+```{r}
+p <- ggplot(data = analysis_df,
+            mapping = aes(x = `Average distance to nearest Park (m)`,
+                          y = log(cases_per_100000_pop))
+            )
+
+p + format_park_cases_plot()
+  
+```
+```{r}
+p <- ggplot(data = analysis_df,
+            mapping = aes(x = log(`Average size of nearest Park (m2)`),
+                          y = log(cases_per_100000_pop))
+            )
+
+p + format_park_cases_plot()
+```
+```{r}
+p <- ggplot(data = analysis_df,
+            mapping = aes(x = `Average number of  Parks within one km`,
+                          y = log(cases_per_100000_pop))
+            )
+
+p + format_park_cases_plot()
+```
+
+```{r}
+p <- ggplot(data = analysis_df,
+            mapping = aes(x = log(`Average combined size of  Parks within 1km  (m2)`),
+                          y = log(cases_per_100000_pop))
+            )
+
+p + format_park_cases_plot()
+```
+
+### 3.1. Private green space and case numbers
+
+
+```{r}
+p <- ggplot(data = analysis_df,
+            mapping = aes(x = perc_garden,
+                          y = log(cases_per_100000_pop))
+            )
+
+p + geom_jitter(alpha = 0.3) +
+  geom_smooth() 
+```
+
+
+```{r}
+p <- ggplot(data = analysis_df,
+            mapping = aes(x = ave_garden_size,
+                          y = log(cases_per_100000_pop))
+            )
+
+p + geom_jitter(alpha = 0.3) +
+  geom_smooth()
+```
+
+```{r}
+
+var_summary <- function(df, var, na.rm = TRUE) {
+ 
+  summary <- df %>% 
+    summarise(min = min({{var}}, na.rm = na.rm),
+              q1 = quantile({{var}}, probs = 0.25, na.rm = na.rm),
+              median = median({{var}}, na.rm = na.rm),
+              q3 = quantile({{var}}, probs = 0.75, na.rm = na.rm),
+              max = max({{var}}, na.rm = na.rm),
+              iqr = IQR({{var}}, na.rm = na.rm),
+              mean = mean({{var}}, na.rm = na.rm),
+              sd = sd({{var}}, na.rm = na.rm)
+              ) 
+  
+  summary[1, "variable"] <- toString(deparse(substitute(var)))
+  summary %>% 
+    relocate(variable, .before = min)
+  
+}
+
+var_summary(priv_gs_focus, perc_garden)
+```
