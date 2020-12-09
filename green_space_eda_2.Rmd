@@ -15,6 +15,8 @@ library(readxl)
 library(purrr)
 
 source("r_code/covid_helper_functions.R")
+
+`%nin%` = Negate(`%in%`)
 ```
 Objectives:
 
@@ -93,7 +95,7 @@ gardens <- gardens %>%
 
 gardens
 ```
-*Public green space: *
+*Public green space: * the parks dataset is more straightforward (than the garden's dataset), so I just drop some redudant geographic variables.
 
 ```{r}
 parks <- parks %>% 
@@ -104,11 +106,18 @@ parks
 ```
 
 
-*Covid_19_cases: * What do the NAs mean?
+*Covid_19_cases: * 
+
+* There are 27030 NAs and 21372 zeros in the new_case column. If a NA value for new case is different to a zero value? How can this best be managed ni the analysis below? For now I'll assume an NA can be treated as zero, given there is no documentation on coronavirus.data.gov.uk providing details.
+* the number of cases (confirmed by a positive test result) in each Local Authority are given on a daily basis.
+
 ```{r}
-covid_cases <- covid_cases %>% 
+covid_cases <- covid_cases %>%
+  filter(str_detect(areaCode, "^E")) %>% 
   select(-areaType, -newCasesBySpecimenDateRollingSum, -newCasesBySpecimenDateRollingRate) %>% 
   rename(new_cases = newCasesBySpecimenDate)
+
+covid_cases
 
 summary(covid_cases)
 
@@ -116,18 +125,148 @@ covid_cases %>%
   count(new_cases) %>% 
   head(1)
 ```
+*Population data: * 
+
+* I am interested in the total population of each Local Authority District. So, I drop variables from the `populations` dataframe detailing the breakdown of population by age, and retain the variable for total population within a given geographic area.
+```{r}
+populations <- populations %>% 
+  select(Code, Name, `All ages`) %>% 
+  rename(population = `All ages`)
+
+populations
+```
 
 
 ### 2.2. Join datasets
+Having identified the variables of interest across the four datasets imported above (gardens, parks, covid_cases and populations), I merge these together to form a single dataframe. This will hopefully make things a bit easier later on in terms of visualization, and also help keep the data wrangling processes seperate from subsequent visualization processes.
+
+```{r}
+# join the four datasets into a single dataframe
+covid_gardens_parks_pop <- covid_cases %>% 
+  left_join(gardens, by = c("areaCode" = "LAD code")) %>%
+  select(-`LAD name`) %>% 
+  left_join(parks, by = c("areaCode" = "LAD code")) %>% 
+  select(-`LAD name`) %>% 
+  left_join(populations, by = c("areaCode" = "Code")) %>% 
+  select(-Name)
+
+```
+
+I then quickly check to see if NA values have been introduced through the joins performed above And, it appears they have. I am not  concerned about the NAs for the `new_cases` variable at this stage, as I've considered these above. 
+
+```{r}
+
+# check how many NAs occur in each column
+covid_gardens_parks_pop %>%
+  summarise(across(.fns = ~ sum(is.na(.))))
+
+```
+But it does look worth checking the extent to which data relating to gardens, parks and population is missing following the join. In particular, how many Local Authorities have missing data?
+
+```{r}
+id_LAs_with_NAs <- function(df, column_name){
+  
+  # convert the string passed to the function for use as a column name in a dplyr function
+  column_name_sym <- rlang::sym(column_name)
+  
+  # identify Local Authorities where an NA is present in the specified column
+  df %>%
+    filter(is.na(!!column_name_sym)) %>%
+    distinct(areaName)
+}
+
+# select variable names of interest 
+vars <- colnames(covid_gardens_parks_pop %>% 
+                   select(-new_cases) # as discussed above there are many NAs for variable
+                 )
+# create a list of Local Authorities where there are NA entries in the parks, gardens and population datasets
+LAs_with_NAs <- vars %>%
+  map_df(~ id_LAs_with_NAs(covid_gardens_parks_pop, .x)) %>% 
+  distinct()
+
+LAs_with_NAs
+
+
+```
+As the missing data issues are restricted to just five Local Authorities, the issue with NAs appears relatively small and unlikely to adversely impact the analysis I plan to move on to below. I do however remove data for these five local authorities from the aggregated dataframe, to prevent the issue of these local authorities appearing in plot including some variables but not in plots including other variables.
+
+```{r}
+covid_gardens_parks_pop <- covid_gardens_parks_pop %>%
+  filter(areaName %nin% LAs_with_NAs)
+```
+
 
 ### 2.3. Calculate 
+```{r}
+total_cases <- covid_gardens_parks_pop %>% 
+  
+  # calculate total number of cases for each Local Authrity District
+  group_by(areaCode, areaName) %>% 
+  mutate(total_cases = sum(new_cases, na.rm = T)) %>% 
+  ungroup() %>% 
+  
+  # remove date related information and associated duplicate rows as no longer required
+  select(-date, -new_cases) %>% 
+  distinct() %>% 
+  
+  # create variables normalized for population
+  mutate(cases_per_ht = total_cases / population * 1e+5,
+         num_parks_per_ht = `Average number of  Parks within one km` / population * 1e+5) %>% 
 
-* 
-* calculate case rates per 100,000 population
+  # create other variables of potential interest
+  mutate(occupancy_rate = population / address_count)
+
+total_cases
+```
+```{r}
+total_cases %>% 
+  select(-address_count, -population, - total_cases, - num_parks_per_ht, - occupancy_rate) %>% 
+  pivot_longer(perc_with_garden:`Average combined size of  Parks within 1km  (m2)`,
+               names_to = "explanatory_variable") %>% 
+  
+  ggplot(mapping = aes(x = value, y = cases_per_ht)) +
+           geom_jitter() +
+           facet_wrap(~explanatory_variable, scales="free")
+
+```
+```{r}
+cor(x = total_cases$ave_garden_size, y = total_cases$total_cases, use="complete.obs")
+
+cor(x = total_cases$`Average number of  Parks within one km`, y = total_cases$total_cases, use="complete.obs")
+
+cor(x = total_cases$`Average distance to nearest Park (m)`, y = total_cases$total_cases, use="complete.obs")
+
+```
+
+
 
 
 ## 3. Visualisation and interpretation
 
+```{r}
+
+
+
+
+# p <- ggplot(data = total_cases,
+#             mapping = aes(x = `Average distance to nearest Park (m)`,
+#                           y = cases_per_ht)
+#             )
+# 
+# p + geom_jitter()
+
+```
+
+```{r}
+
+p <- ggplot(data = total_cases,
+            mapping = aes(x = ave_garden_size,
+                          y = log(cases_per_ht))
+            )
+
+p + geom_jitter()
+
+```
 
 ## 4. Conclusions
 
