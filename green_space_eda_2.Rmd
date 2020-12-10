@@ -13,10 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(readxl)
 library(purrr)
+library(corrplot)
 
 source("r_code/covid_helper_functions.R")
 
 `%nin%` = Negate(`%in%`)
+
+theme_set(theme_light())
 ```
 Objectives:
 
@@ -196,11 +199,13 @@ covid_gardens_parks_pop <- covid_gardens_parks_pop %>%
 ```
 
 
-### 2.3. Calculate 
+### 2.3. Create variables for analysis 
+Data on Covid-19 cases confirmed by a positive test within each Local Authority District is recorded on a daily basis. I am trying to understand the overall extent to which each local authority has been affected by Covid-19. So, I calculated total case numbers (up to the 8th December) for each Local Authority District. Additionally, I wanted to take into account the variations in population size across different local authorities. So, I calculated the number of cases per 100,000 population (a metric often used in [government reporting](https://coronavirus.data.gov.uk/details/about-data#rate-calculations)). 
+
 ```{r}
 total_cases <- covid_gardens_parks_pop %>% 
   
-  # calculate total number of cases for each Local Authrity District
+  # calculate total number of cases for each Local Authority District
   group_by(areaCode, areaName) %>% 
   mutate(total_cases = sum(new_cases, na.rm = T)) %>% 
   ungroup() %>% 
@@ -212,23 +217,134 @@ total_cases <- covid_gardens_parks_pop %>%
   # create variables normalized for population
   mutate(cases_per_ht = total_cases / population * 1e+5,
          num_parks_per_ht = `Average number of  Parks within one km` / population * 1e+5) %>% 
-
   # create other variables of potential interest
   mutate(occupancy_rate = population / address_count)
-
 total_cases
 ```
-```{r}
-total_cases %>% 
+## 3. Visualise and interpret the data
+Here I am mostly interested in identifying any associations between the green space related variables (provided by the ONS), and the rates of Covid-19 cases. So, I begin by producing  a set scatter plots, considering the green space related variables as potential explanatory variables (on the x axis), and the number of cases per 100,000 population as the response variable (on the y axis). Where each point plotted represents an individual Local Authority District.
+
+```{r, fig.width=10}
+total_cases_tidy <- total_cases %>% 
   select(-address_count, -population, - total_cases, - num_parks_per_ht, - occupancy_rate) %>% 
   pivot_longer(perc_with_garden:`Average combined size of  Parks within 1km  (m2)`,
-               names_to = "explanatory_variable") %>% 
+               names_to = "explanatory_variable")
   
-  ggplot(mapping = aes(x = value, y = cases_per_ht)) +
-           geom_jitter() +
-           facet_wrap(~explanatory_variable, scales="free")
+p1 <-  ggplot(data = total_cases_tidy,
+             mapping = aes(x = value, y = cases_per_ht)
+             )
+
+p1 + geom_jitter(alpha = 0.5) +
+    facet_wrap(~ explanatory_variable, scales="free")
 
 ```
+From inspection of the scatter plots above, the most promising potential explanatory variables are the average garden size and the average distance to the nearest park. So, focus on these two variables in more detail.
+
+```{r}
+vars_of_interest <- c("ave_garden_size", "Average distance to nearest Park (m)")
+
+total_cases_focus <- total_cases_tidy %>% 
+  # remove green space variables I am no longer interested in
+  filter(explanatory_variable %in% vars_of_interest)
+  
+
+total_cases_focus
+```
+
+```{r}
+p2 <-  ggplot(data = total_cases_focus,
+             mapping = aes(x = value, y = cases_per_ht)
+             )
+
+p2 + geom_jitter(alpha = 0.5) +
+    facet_wrap(~ explanatory_variable, scales="free")
+
+
+p3 <-  ggplot(data = total_cases_focus,
+             mapping = aes(x = value, y = log(cases_per_ht))
+             )
+
+p3 + geom_jitter(alpha = 0.5) +
+    facet_wrap(~ explanatory_variable, scales="free")
+
+```
+
+
+For England 
+median gross salary 26,055	
+mean gross salary 32,237
+
+
+
+```{r}
+income <- read_excel("./Data/PROV - Home Geography Table 8.7a   Annual pay - Gross 2020.xls",
+                     sheet = "All_edit_for_import")
+
+income <- income %>% 
+  mutate(Median = as.double(Median),
+         Mean = as.double(Mean)
+         )
+```
+```{r}
+
+eng_median_salary <-  26055	
+eng_mean_salary <- 32237
+
+total_cases_income <- total_cases_focus %>% 
+  pivot_wider(names_from = "explanatory_variable", values_from = "value") %>%
+  rename(ave_dist_to_park = "Average distance to nearest Park (m)") %>%
+  left_join(income %>% 
+              select(Code, Median, Mean),
+            by = c("areaCode" = "Code")
+            ) %>% 
+  mutate(diff_from_mean = Mean - eng_mean_salary)
+
+total_cases_income
+```
+
+
+```{r}
+library(colorspace)
+
+limit <- max(total_cases_income$diff_from_mean, na.rm = T) * c(-1, 1)
+
+p4 <-  ggplot(data = total_cases_income,
+             mapping = aes(x = ave_garden_size, 
+                           y = cases_per_ht,
+                           fill = Mean)
+             )
+
+p4 + geom_jitter(size = 2, shape = 21, colour = "grey50") +
+  
+  scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
+                                   l1 = 0, p1 = 1, p2 = 1) + 
+  # scale_fill_distiller(type = "div", 
+  #                     #palette = "Spectral",
+  #                     limit = limit) +
+  xlim(0, 1000)
+
+```
+
+
+
+```{r, fig.height=7.5}
+
+total_cases_corr <- total_cases_focus %>% 
+  pivot_wider(names_from = "explanatory_variable", values_from = "value") %>%
+  rename(ave_dist_to_park = "Average distance to nearest Park (m)") %>%
+  mutate(log_ave_garden_size = log(ave_garden_size),
+         log_ave_dist_to_park = log(ave_dist_to_park)
+         ) %>% 
+  select(cases_per_ht:log_ave_dist_to_park) %>% 
+  drop_na()
+
+corrlation_matrix <- cor(total_cases_corr)
+
+corrplot(corrlation_matrix, method = "circle", type = 'lower')
+corrplot(corrlation_matrix, method = "number", type = 'lower')
+```
+
+
 ```{r}
 cor(x = total_cases$ave_garden_size, y = total_cases$total_cases, use="complete.obs")
 
@@ -240,8 +356,6 @@ cor(x = total_cases$`Average distance to nearest Park (m)`, y = total_cases$tota
 
 
 
-
-## 3. Visualisation and interpretation
 
 ```{r}
 
