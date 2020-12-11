@@ -297,33 +297,69 @@ total_cases_income <- total_cases_focus %>%
               select(Code, Median, Mean),
             by = c("areaCode" = "Code")
             ) %>% 
-  mutate(diff_from_mean = Mean - eng_mean_salary)
+  mutate(above_mean = Mean > eng_mean_salary) %>% 
+  filter(!is.na(cases_per_ht)) %>% 
+  filter(!is.na(Mean))
 
 total_cases_income
 ```
 
+https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-diverging-color-scale-on-a-heatmap
 
 ```{r}
 library(colorspace)
 
-limit <- max(total_cases_income$diff_from_mean, na.rm = T) * c(-1, 1)
+x_label <- expression("Average garden size in"~m^2)
+y_label <- "Total number of confirmed Covid-19 cases"
+subtitle <- str_c("The average salary across England in 2020 is ", eng_mean_salary)
+title <- "Holding title"
+legend_label <- "..."
 
-p4 <-  ggplot(data = total_cases_income,
-             mapping = aes(x = ave_garden_size, 
+facet_labels <- c(`FALSE` = str_c("Local Authorities with average salaries\n equal to or below £", eng_mean_salary),
+                  `TRUE` = str_c("Local Authorities with average salaries\n above £", eng_mean_salary))
+
+p4 <-  ggplot(data = subset(total_cases_income, subset = ave_garden_size < 1000),
+             mapping = aes(x = ave_garden_size,
                            y = cases_per_ht,
                            fill = Mean)
              )
 
-p4 + geom_jitter(size = 2, shape = 21, colour = "grey50") +
+p4 + geom_jitter(size = 2, shape = 21, colour = "grey30") +
   
   scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
-                                   l1 = 0, p1 = 1, p2 = 1) + 
+                                   c1 = 0, l1 = 0, p1 = 1, p2 = 1) +
+  
+  labs(x = x_label,
+       y = y_label,
+       subtitle = subtitle,
+       title = title,
+       fill = legend_label
+       )+ 
+  #xlim(0, 1000) +
+  
+  facet_wrap(~ above_mean, labeller = as_labeller(facet_labels)) +
+  
+  theme_minimal()
+
+```
+
+```{r}
+p5 <-  ggplot(data = total_cases_income,
+             mapping = aes(x = ave_dist_to_park, 
+                           y = cases_per_ht,
+                           fill = Mean)
+             )
+
+p5 + geom_jitter(size = 2, shape = 21, colour = "grey30") +
+  
+  scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
+                                   c1 = 0, l1 = 0, p1 = 1, p2 = 1) + 
   # scale_fill_distiller(type = "div", 
   #                     #palette = "Spectral",
   #                     limit = limit) +
-  xlim(0, 1000)
-
+  facet_wrap(~ above_mean) 
 ```
+
 
 
 
