@@ -1,5 +1,5 @@
 ---
-title: "green space EDA"
+title: "green space EDA 2"
 output: 
   html_document:
     df_print: paged
@@ -251,6 +251,8 @@ total_cases_focus <- total_cases_tidy %>%
 total_cases_focus
 ```
 
+Focusing on average garden size and the average distance to the nearest park, I quickly plotted each variable against cases per  100,000 population, and the log (base 10) of cases per 100,000 population. This was because in the original plots above I had noticed perhaps a hint on non-linearity in the association between the green space variables and the number of cases. Reviewing the plots with the log y scale I thought that this transformation of the data did little to bring what associations are present in better focus. And, log scales are typically less intuitive to interpret than linear scales, so I decided to skick with the linear y scales for the remainder of the analysis.
+
 ```{r}
 p2 <-  ggplot(data = total_cases_focus,
              mapping = aes(x = value, y = cases_per_ht)
@@ -270,34 +272,37 @@ p3 + geom_jitter(alpha = 0.5) +
 ```
 
 
-For England 
-median gross salary 26,055	
-mean gross salary 32,237
+At this point it occurred to me that it would be interesting to explore if the affluence of each Local Authority had a mediating role to play in the relationships between the two green space variables and the number of Covid-19 cases. So, I imported so some  data (again from the ONS) estimating the average salaries of people living in each local authority.
 
-
+I didn't look at the NAs created by coercing the variable types to numerics. I just filtered out Local Authority with NA values for the Mean salary later on (ahead of plotting).
 
 ```{r}
 income <- read_excel("./Data/PROV - Home Geography Table 8.7a   Annual pay - Gross 2020.xls",
                      sheet = "All_edit_for_import")
 
 income <- income %>% 
+  
+  # mean and median variables imported as characters (perhaps something to using read_excel ...)
   mutate(Median = as.double(Median),
          Mean = as.double(Mean)
          )
 ```
 ```{r}
 
+# taken from the same dataset as the Local Authority mean/median data
 eng_median_salary <-  26055	
 eng_mean_salary <- 32237
 
 total_cases_income <- total_cases_focus %>% 
   pivot_wider(names_from = "explanatory_variable", values_from = "value") %>%
-  rename(ave_dist_to_park = "Average distance to nearest Park (m)") %>%
+  rename(ave_dist_to_park = "Average distance to nearest Park (m)") %>% # simplifying naming of variable of interest
   left_join(income %>% 
               select(Code, Median, Mean),
             by = c("areaCode" = "Code")
             ) %>% 
-  mutate(above_mean = Mean > eng_mean_salary) %>% 
+  mutate(above_mean = Mean > eng_mean_salary) %>% #create variable to allow grouping in plots below
+  
+  # remove NAs in variables to be included in the plots
   filter(!is.na(cases_per_ht)) %>% 
   filter(!is.na(Mean))
 
@@ -309,55 +314,73 @@ https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-div
 ```{r}
 library(colorspace)
 
-x_label <- expression("Average garden size in"~m^2)
-y_label <- "Total number of confirmed Covid-19 cases"
-subtitle <- str_c("The average salary across England in 2020 is ", eng_mean_salary)
-title <- "Holding title"
-legend_label <- "..."
+x_label <- expression("\nAverage garden size in"~m^2)
+y_label <- "Total number of confirmed Covid-19 cases\n"
+subtitle <- str_c("The average salary across England as a whole in 2020 is £", eng_mean_salary, ".\n")
+title <- "Average garden size and the number of Covid-19 cases\nin English Local Authorities\n"
+legend_label <- "Average salary in\nthe local authority"
 
 facet_labels <- c(`FALSE` = str_c("Local Authorities with average salaries\n equal to or below £", eng_mean_salary),
                   `TRUE` = str_c("Local Authorities with average salaries\n above £", eng_mean_salary))
 
-p4 <-  ggplot(data = subset(total_cases_income, subset = ave_garden_size < 1000),
-             mapping = aes(x = ave_garden_size,
-                           y = cases_per_ht,
-                           fill = Mean)
+
+# create a function for core elements of the plot, as I am making two very 
+# similar plots with different variables on the x axis
+
+green_space_covid_plot <- function(){
+  
+  list(geom_jitter(mapping = aes(y = cases_per_ht,
+                               fill = Mean),
+                 size = 2, 
+                 shape = 21, 
+                 colour = "grey30"),
+       
+       # set the midpoint of the diverging colour scale to England's mean salary
+       # strengthen the starting colour for the lower half of scale 
+       # (as the salary range above the mean is wider than the salary range below)
+       scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
+                                   c1 = 0, l1 = 0, p1 = 1, p2 = 1),
+       
+       facet_wrap(~ above_mean, labeller = as_labeller(facet_labels)),
+       
+       labs(y = y_label,
+            fill = legend_label,
+            subtitle = subtitle)
+  )
+}
+
+# create the 
+p4 <-  ggplot(data = subset(total_cases_income, subset = ave_garden_size < 1000), # remove an outlier
+             mapping = aes(x = ave_garden_size)
              )
 
-p4 + geom_jitter(size = 2, shape = 21, colour = "grey30") +
-  
-  scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
-                                   c1 = 0, l1 = 0, p1 = 1, p2 = 1) +
+p4 + green_space_covid_plot() +
   
   labs(x = x_label,
-       y = y_label,
-       subtitle = subtitle,
-       title = title,
-       fill = legend_label
-       )+ 
+       title = title
+       )
   #xlim(0, 1000) +
   
-  facet_wrap(~ above_mean, labeller = as_labeller(facet_labels)) +
-  
-  theme_minimal()
-
 ```
 
 ```{r}
-p5 <-  ggplot(data = total_cases_income,
-             mapping = aes(x = ave_dist_to_park, 
-                           y = cases_per_ht,
-                           fill = Mean)
+
+x_label <- "\nAverage distance to nearest park in m"
+title <- "Average distance to nearest park and the number of Covid-19 cases\nin English Local Authorities\n"
+
+p5 <-  ggplot(data = subset(total_cases_income, subset = ave_dist_to_park < 900), # remove two outliers
+             mapping = aes(x = ave_dist_to_park)
              )
 
-p5 + geom_jitter(size = 2, shape = 21, colour = "grey30") +
+p5 + green_space_covid_plot() +
   
-  scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
-                                   c1 = 0, l1 = 0, p1 = 1, p2 = 1) + 
-  # scale_fill_distiller(type = "div", 
-  #                     #palette = "Spectral",
-  #                     limit = limit) +
-  facet_wrap(~ above_mean) 
+    labs(x = x_label,
+       subtitle = subtitle,
+       title = title
+       )
+```
+```{r}
+
 ```
 
 
