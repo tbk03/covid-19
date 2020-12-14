@@ -300,11 +300,13 @@ total_cases_income <- total_cases_focus %>%
               select(Code, Median, Mean),
             by = c("areaCode" = "Code")
             ) %>% 
-  mutate(above_mean = Mean > eng_mean_salary) %>% #create variable to allow grouping in plots below
+  mutate(above_mean = Mean > eng_mean_salary,
+         above_median = Median > eng_median_salary) %>% #create variable to allow grouping in plots below
   
   # remove NAs in variables to be included in the plots
   filter(!is.na(cases_per_ht)) %>% 
-  filter(!is.na(Mean))
+  filter(!is.na(Mean)) %>% 
+  filter(!is.na(Median))
 
 total_cases_income
 ```
@@ -338,10 +340,9 @@ green_space_covid_plot <- function(){
        # set the midpoint of the diverging colour scale to England's mean salary
        # strengthen the starting colour for the lower half of scale 
        # (as the salary range above the mean is wider than the salary range below)
-       scale_fill_continuous_divergingx(palette = 'RdBu', mid = eng_mean_salary,
-                                   c1 = 0, l1 = 0, p1 = 1, p2 = 1),
-       
-       facet_wrap(~ above_mean, labeller = as_labeller(facet_labels)),
+       scale_fill_continuous_divergingx(palette = 'RdBu', 
+                                        mid = eng_mean_salary,
+                                        c1 = 0, l1 = 0, p1 = 1, p2 = 1),
        
        labs(y = y_label,
             fill = legend_label,
@@ -349,17 +350,20 @@ green_space_covid_plot <- function(){
   )
 }
 
-# create the 
-p4 <-  ggplot(data = subset(total_cases_income, subset = ave_garden_size < 1000), # remove an outlier
+# create plot using Mean as the measure of centre for salary data
+p4a <-  ggplot(data = subset(total_cases_income, subset = ave_garden_size < 1000), # remove an outlier
              mapping = aes(x = ave_garden_size)
              )
 
-p4 + green_space_covid_plot() +
+p4a + green_space_covid_plot() +
+  
+  facet_wrap(~ above_mean, labeller = as_labeller(facet_labels)) +
   
   labs(x = x_label,
        title = title
        )
-  #xlim(0, 1000) +
+
+
   
 ```
 
@@ -374,6 +378,8 @@ p5 <-  ggplot(data = subset(total_cases_income, subset = ave_dist_to_park < 900)
 
 p5 + green_space_covid_plot() +
   
+  facet_wrap(~ above_mean, labeller = as_labeller(facet_labels)) +
+  
     labs(x = x_label,
        subtitle = subtitle,
        title = title
@@ -381,8 +387,117 @@ p5 + green_space_covid_plot() +
 ```
 ```{r}
 
+green_space_covid_plot_median <- function(){
+  
+  list(geom_jitter(mapping = aes(y = cases_per_ht,
+                               fill = Median),
+                 size = 2, 
+                 shape = 21, 
+                 colour = "grey30"),
+       
+       # set the midpoint of the diverging colour scale to England's mean salary
+       # strengthen the starting colour for the lower half of scale 
+       # (as the salary range above the mean is wider than the salary range below)
+       scale_fill_continuous_divergingx(palette = 'RdBu', 
+                                        mid = eng_median_salary,
+                                        c1 = 0, l1 = 0, p1 = 1, p2 = 1),
+       
+       labs(y = y_label,
+            fill = legend_label,
+            subtitle = subtitle)
+  )
+}
+
+# create plot using Mean as the measure of centre for salary data
+p4a <-  ggplot(data = subset(total_cases_income, subset = ave_garden_size < 1000), # remove an outlier
+             mapping = aes(x = ave_garden_size)
+             )
+
+p4a + green_space_covid_plot_median() +
+  
+  facet_wrap(~ above_median, labeller = as_labeller(facet_labels)) +
+  
+  labs(x = x_label,
+       title = title
+       )
+  
+
 ```
 
+```{r, fig.height=6}
+# 
+# x <-  quantile(total_cases_income$Median, c(0.25, 0.5, 0.75))
+# total_cases_income$quartile <- cut(total_cases_income$Median, x, include.lowest = TRUE)
+total_cases_income <- total_cases_income %>% 
+  mutate(median_salary_quartile = ntile(Median, 4))
+
+green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var){
+  
+  # set the midpoint of the diverging colour scale to either England's median or mean salary
+  # strengthen the starting colour for the lower half of scale 
+  # (as the salary range above the mean is wider than the salary range below)
+  
+  if (sal_ave == "Median") 
+    colour_pallette <- scale_fill_continuous_divergingx(palette = 'RdBu', 
+                                        mid = eng_median_salary,
+                                        c1 = 0, l1 = 0, p1 = 1, p2 = 1)
+  else 
+    colour_pallette <- scale_fill_continuous_divergingx(palette = 'RdBu', 
+                                        mid = eng_mean_salary,
+                                        c1 = 0, l1 = 0, p1 = 1, p2 = 1)
+  
+  ggplot(data = df, 
+             mapping = aes(x = .data[[x_var]],
+                           y = cases_per_ht, 
+                           fill = .data[[sal_ave]])
+             ) +
+  
+  geom_jitter(size = 2, shape = 21, colour = "grey30") +
+  
+  colour_pallette +
+    
+  facet_wrap(vars(.data[[facet_var]]), labeller = as_labeller(facet_labels))
+
+}
+
+p <- green_space_covid_plotter(df = subset(total_cases_income, 
+                                      subset = ave_garden_size < 1000
+                                      ), # remove an outlier
+                          x_var = "ave_garden_size",
+                          sal_ave = "Median",
+                          facet_var = "median_salary_quartile"
+                          )
+
+p + labs(
+         y = y_label,
+         fill = legend_label,
+         title = title,
+         subtitle = subtitle)
+
+
+p1 <- green_space_covid_plotter(df = subset(total_cases_income,
+                                            subset = ave_dist_to_park < 800), # remove an outlier
+                                x_var = "ave_dist_to_park",
+                                sal_ave = "Median",
+                                facet_var = "median_salary_quartile"
+                          )
+
+p1
+
+# create plot using Mean as the measure of centre for salary data
+
+
+# p4a + green_space_covid_plot_median() +
+#   
+#   
+#   
+#   labs(,
+#        
+#        )
+#   
+
+```
+```
 
 
 
