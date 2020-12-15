@@ -315,25 +315,12 @@ total_cases_income <- total_cases_focus %>%
 
 total_cases_income
 ```
-
-https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-diverging-color-scale-on-a-heatmap
-
+* refactoring and learning about writing functions with ggplot2 (https://fishandwhistle.net/slides/rstudioconf2020/#1) - produce plots with common features (e.g. y axis, use of facetting) but differences (e.g. x variable, colour gradient for fill)
+* colour scale considerations https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-diverging-color-scale-on-a-heatmap
+* mean versus median as the appropriate measure of the average salaries within Local Authorities and across the UK as a whole
 
 
 ```{r}
-
-x_label <- expression("\nAverage garden size in"~m^2)
-y_label <- "Total number of confirmed Covid-19 cases\n"
-subtitle <- str_c("The average salary across England as a whole in 2020 is £", eng_mean_salary, ".\n")
-title <- "Average garden size and the number of Covid-19 cases\nin English Local Authorities\n"
-legend_label <- "Average salary in\nthe local authority"
-
-facet_labels_mean <- c(`FALSE` = str_c("Local Authorities with mean salaries\n equal to or below £", eng_mean_salary),
-                      `TRUE` = str_c("Local Authorities with mean salaries\n above £", eng_mean_salary))
-
-facet_labels_median <- c(`FALSE` = str_c("Local Authorities with median salaries\n equal to or below £", eng_median_salary),
-                      `TRUE` = str_c("Local Authorities with median salaries\n above £", eng_median_salary))
-
 
 green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var = NULL, facet_labs = NULL){
   
@@ -357,6 +344,7 @@ green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var = NULL, face
   else
     facet = facet_wrap(vars(.data[[facet_var]]), labeller = as_labeller(facet_labs))
   
+  # create the plot
   ggplot(data = df, 
              mapping = aes(x = .data[[x_var]],
                            y = cases_per_ht, 
@@ -388,11 +376,6 @@ p_park
 p_garden
 
 
-# p + labs(
-#          y = y_label,
-#          fill = legend_label,
-#          title = title,
-#          subtitle = subtitle)
 
 
 
@@ -401,6 +384,15 @@ p_garden
 ```
 
 ```{r}
+
+# define labels for plot facets
+facet_labels_mean <- c(`FALSE` = str_c("Local Authorities with mean salaries\n equal to or below £", eng_mean_salary),
+                      `TRUE` = str_c("Local Authorities with mean salaries\n above £", eng_mean_salary))
+
+facet_labels_median <- c(`FALSE` = str_c("Local Authorities with median salaries\n equal to or below £", eng_median_salary),
+                      `TRUE` = str_c("Local Authorities with median salaries\n above £", eng_median_salary))
+
+
 
 p_park_median <- green_space_covid_plotter(df = subset(total_cases_income,
                                             subset = ave_dist_to_park < 800), # remove an outlier
@@ -447,9 +439,12 @@ p_garden_mean
 
 
 ```{r}
-# facet by quartile
+# create a new variable to allow faceting by quartile
 total_cases_income <- total_cases_income %>% 
   mutate(median_salary_quartile = ntile(Median, 4))
+
+# define labels for plot facets
+facet_labs <-  c(`1` = "Q1", `2` = "Q2", `3` = "Q3", `4` = "Q4")
   
   
 p_park_median_qs <- green_space_covid_plotter(df = subset(total_cases_income,
@@ -457,7 +452,7 @@ p_park_median_qs <- green_space_covid_plotter(df = subset(total_cases_income,
                                 x_var = "ave_dist_to_park",
                                 sal_ave = "Median",
                                 facet_var = "median_salary_quartile",
-                                facet_labs = c(`1` = "Q1", `2` = "Q2", `3` = "Q3", `4` = "Q4")
+                                facet_labs = facet_labs
                           )
 
 p_garden_median_qs <- green_space_covid_plotter(df = subset(total_cases_income, 
@@ -466,387 +461,29 @@ p_garden_median_qs <- green_space_covid_plotter(df = subset(total_cases_income,
                           x_var = "ave_garden_size",
                           sal_ave = "Median",
                           facet_var = "median_salary_quartile",
-                          facet_labs = facet_labels_median
+                          facet_labs = facet_labs
                           )
                           
 p_park_median_qs
+p_garden_median_qs
 ```
 
-
-
-```{r, fig.height=7.5}
-
-total_cases_corr <- total_cases_focus %>% 
-  pivot_wider(names_from = "explanatory_variable", values_from = "value") %>%
-  rename(ave_dist_to_park = "Average distance to nearest Park (m)") %>%
-  mutate(log_ave_garden_size = log(ave_garden_size),
-         log_ave_dist_to_park = log(ave_dist_to_park)
-         ) %>% 
-  select(cases_per_ht:log_ave_dist_to_park) %>% 
-  drop_na()
-
-corrlation_matrix <- cor(total_cases_corr)
-
-corrplot(corrlation_matrix, method = "circle", type = 'lower')
-corrplot(corrlation_matrix, method = "number", type = 'lower')
-```
-
-
-```{r}
-cor(x = total_cases$ave_garden_size, y = total_cases$total_cases, use="complete.obs")
-
-cor(x = total_cases$`Average number of  Parks within one km`, y = total_cases$total_cases, use="complete.obs")
-
-cor(x = total_cases$`Average distance to nearest Park (m)`, y = total_cases$total_cases, use="complete.obs")
-
-```
-
-
-
+Produce final plot
 
 ```{r}
 
+x_label <- expression("\nAverage garden size in"~m^2)
+y_label <- "Total number of confirmed Covid-19 cases\nper 100,000 population\n"
+subtitle <- str_c("The mean salary across England as a whole in 2020 is £", eng_mean_salary, ".\n")
+title <- "Average garden size and the number of Covid-19 cases\nin English Local Authorities\n"
+legend_label <- "Mean salary in\nthe local authority"
 
-
-
-# p <- ggplot(data = total_cases,
-#             mapping = aes(x = `Average distance to nearest Park (m)`,
-#                           y = cases_per_ht)
-#             )
-# 
-# p + geom_jitter()
-
-```
-
-```{r}
-
-p <- ggplot(data = total_cases,
-            mapping = aes(x = ave_garden_size,
-                          y = log(cases_per_ht))
-            )
-
-p + geom_jitter()
-
-```
-
-## 4. Conclusions
-
-
-## 2. Identifying variables of interest
-
-### 2.1. Private green space
-
-two sub groups (Flats and Houses) within the data, at this stage interested in both (also provided)
-
-```{r}
-priv_gs_focus <- private_green_space %>% 
-  select(`LAD code`, `LAD name`, `T_Address count`, 
-         `T_Percentage of adresses with private outdoor space`,
-         `T_Average size of private outdoor space (m2)`
-         ) %>% 
-  rename(address_count = `T_Address count`,
-         perc_garden = `T_Percentage of adresses with private outdoor space`,
-         ave_garden_size = `T_Average size of private outdoor space (m2)`)
-
-
-priv_gs_focus
-
-```
-```{r, echo=FALSE, message=FALSE}
-num_NA <- priv_gs_focus %>% 
-  map(~ sum(is.na(.x))) %>% 
-  as_tibble() %>% 
-  sum()
-
-priv_gs_focus_dim <- dim(priv_gs_focus)
-```
-
-There `r num_NA` NA values present across all columns in the `priv_gs_focus` dataframe. Given the number of NAs is small relative to the size of the dataframe (`r priv_gs_focus_dim`), and this is an exploratory data analysis I'll leave NAs to be handled/removed by the plotting functions used below.
-
-
-[How to plot boxplot and histogram and align](https://stackoverflow.com/questions/58306727/perfectly-align-horizontal-boxplot-under-histogram)
-
-```{r}
-
-format_hist_box_pair_plot <- function(x_lims){
-  list(scale_x_continuous(limits= x_lims), 
-       theme_minimal()
-       )
-}
-
-hist_box_pair_plot <- function(df, x_var, x_lims, x_label, y_label,
-                               colour = "grey40", binwidth = 0.01, ...){
-  
-  histogram <- ggplot(data = df,
-              mapping = aes_string(x = x_var))
-  
-  histogram <- histogram + geom_histogram(fill = colour, binwidth = binwidth) +
-    
-    labs(x = NULL, y = y_label) +
-    format_hist_box_pair_plot(x_lims)
-    
-  box_plot <- ggplot(data = df,
-              mapping = aes_string(x = x_var))
-  
-  box_plot <- box_plot + geom_boxplot(colour = colour) +
-
-    scale_y_continuous(labels = NULL) +
-    labs(x = x_label) +
-    format_hist_box_pair_plot(x_lims)
-  
-  #combine and align the histogram and box plot
-  cowplot::plot_grid(histogram, box_plot,
-                     ncol = 1, rel_heights = c(3, 1),
-                     align = 'v', axis = 'lr')
-}
-
-hist_box_pair_plot(priv_gs_focus, "perc_garden",
-                   x_label = "Percentage of adresses with private outdoor space",
-                   y_label = "number of Local Authority Districts",
-                   x_lims = c(0, 1)
-                   ) 
-
-```
-On how to pass variable names to function which wrapper around dplyr function calls https://cran.r-project.org/web/packages/dplyr/vignettes/programming.html
-
-
-```{r}
- 
-var_summary_stats <- function(column, na.rm = TRUE) {
-  # the argument column is expected to be numeric vector, as this function was designed 
-  # to work with purrr::map (which passes dataframe columns as vectors to the function
-  # being mapped)
-  
-  # return a single row dataframe containing the summary stats for column
-  tibble(
-    min = min(column, na.rm = na.rm),
-    q1 = quantile(column, probs = 0.25, na.rm = na.rm),
-    median = median(column, na.rm = na.rm),
-    q3 = quantile(column, probs = 0.75, na.rm = na.rm),
-    max = max(column, na.rm = na.rm),
-    iqr = IQR(column, na.rm = na.rm),
-    mean = mean(column, na.rm = na.rm),
-    sd = sd(column, na.rm = na.rm)
-  )
-}
-
-df_summary_stats <- function(df){
-  
-  # get the names of the numeric variables in the dataframe
-  variable_name <- df %>%
-    select_if(is.numeric) %>% 
-    names()
-
-  # return a dataframe containing summary stats for each numeric variable in df
-  df %>%
-    select_if(is.numeric) %>% 
-    purrr::map_dfr(var_summary_stats) %>% 
-    add_column(variable_name, .before = 1)
-}
-  
-df_summary_stats(priv_gs_focus)
-
-summary_functions <- list(mean = ~ mean(.x, na.rm = T), 
-                          sd = ~ sd(.x, na.rm = T)
-                          )
-
-priv_gs_focus %>% 
-  summarise(across(where(is_numeric), summary_functions 
-                   )
-            )
-
+p_garden_mean + labs(x = x_label,
+         y = y_label,
+         fill = legend_label,
+         title = title,
+         subtitle = subtitle)
 ```
 
 
-```{r}
-hist_box_pair_plot(priv_gs_focus, "ave_garden_size",
-                   x_label = "Average size private outdoor space (m2)",
-                   y_label = "number of Local Authority Districts",
-                   x_lims = c(0, 2000),
-                   binwidth = 50
-                   )
 
-```
-
-
-```{r}
-p <- ggplot(data = priv_gs_focus,
-            mapping = aes(x = log10(ave_garden_size))
-            )
-
-p + geom_histogram()
-```
-
-### 2.2. Public green space
-```{r}
-count_NA_in_df = function(df){
-  df %>% 
-    map(~ sum(is.na(.x))) %>% 
-    as_tibble()
-}
-
-parks
-
-count_NA_in_df(parks)
-
-```
-
-
-### 2.3. Covid-19 cases
-
-```{r}
-cases_focus <- cases_tidy %>% 
-  select(msoa11_cd, msoa11_hclnm, week_commencing, cases) %>% 
-  arrange(msoa11_cd, week_commencing) %>%
-  
-  group_by(msoa11_cd) %>% 
-  mutate(culm_cases = cumsum(ifelse(is.na(cases), 0, cases))         )
-
-cases_focus
-
-count_NA_in_df(cases_focus)
-  
-
-```
-
-calculating infections per 100,000
-
-```{r}
-
-#process geog lookup table
-msoa_to_lad <- geog_lookup %>%
-  select(MSOA11CD, MSOA11NM, LAD17CD, LAD17NM) %>% 
-  # remove duplicate entries of each combination
-  unique()
-
-# process populations table
-populations_minimal <- populations %>% 
-  select(Code, Name, Geography1, `All ages`)
-
-# join cases with geog lookup
-cases_lad <- cases_focus %>% 
-  left_join(msoa_to_lad, by = c("msoa11_cd" = "MSOA11CD")) %>%
-  group_by(LAD17CD, LAD17NM) %>%
-  summarise(total_cases = sum(cases, na.rm = TRUE))
-  
-# then join with population and calculate positive tests per 100,000 people
-cases_lad_pop <- cases_lad %>%
-  left_join(populations_minimal, by = c("LAD17CD" = "Code")) %>% 
-  mutate(cases_per_100000_pop = (total_cases / `All ages`) * 1e+5)
-
-# then join with private green space data
-cases_lad_pop_gardens <- cases_lad_pop %>% 
-  left_join(priv_gs_focus, by = c("LAD17CD" = "LAD code"))
-
-# then join with parks data
-cases_lad_pop_gardens_parks <- cases_lad_pop_gardens %>% 
-  left_join(parks, by = c("LAD17CD" = "LAD code"))
-
-# remove some redundant columns
-analysis_df <- cases_lad_pop_gardens_parks %>% 
-  select(-`LAD name.y`, - `LAD name.x`, - Name)
-
-analysis_df
-```
-
-## 3. Analysing the relationships between access to green space and Covid-19 cases
-
-
-### 3.2. Parks and case numbers
-
-ONS data on access to parks is available at LSOA and LAD (Local Authority District) scales, whereas data.gov.uk Covid-19 case data is provided at the MSOA scale. Each MSOA is made up of a number of LSOAs, but it not clear how best average the variables detailing access to green space over multiple LSOAs (given that LSOAs can be different sizes in terms of population and geography). So, making the case and green space datasets comparable at the MSOA scale is challenging. However, each LAD is made up of multiple MSOAs, and it is more straight forward to aggregate Covid-19 case numbers from the MSOA scale to LAD scale (simply by addition). Case numbers can then be compared to the access to green space dataset, where LAD scale statistics are provided by the ONS. Presumably the ONS has taken an appropriate approach to translating the variables at different scale, an approach which is likely to be more sophisticated and better informed than an approach I might devise and implement. 
-
-
-
-```{r}
-format_park_cases_plot <- function(){
-  list(geom_point(alpha = 0.4),
-       geom_smooth(colour = "grey50", fill = "grey90"),
-       theme_minimal()
-       )
-}
-```
-
-
-```{r}
-p <- ggplot(data = analysis_df,
-            mapping = aes(x = `Average distance to nearest Park (m)`,
-                          y = log(cases_per_100000_pop))
-            )
-
-p + format_park_cases_plot()
-  
-```
-```{r}
-p <- ggplot(data = analysis_df,
-            mapping = aes(x = log(`Average size of nearest Park (m2)`),
-                          y = log(cases_per_100000_pop))
-            )
-
-p + format_park_cases_plot()
-```
-```{r}
-p <- ggplot(data = analysis_df,
-            mapping = aes(x = `Average number of  Parks within one km`,
-                          y = log(cases_per_100000_pop))
-            )
-
-p + format_park_cases_plot()
-```
-
-```{r}
-p <- ggplot(data = analysis_df,
-            mapping = aes(x = log(`Average combined size of  Parks within 1km  (m2)`),
-                          y = log(cases_per_100000_pop))
-            )
-
-p + format_park_cases_plot()
-```
-
-### 3.1. Private green space and case numbers
-
-
-```{r}
-p <- ggplot(data = analysis_df,
-            mapping = aes(x = perc_garden,
-                          y = log(cases_per_100000_pop))
-            )
-
-p + geom_jitter(alpha = 0.3) +
-  geom_smooth() 
-```
-
-
-```{r}
-p <- ggplot(data = analysis_df,
-            mapping = aes(x = ave_garden_size,
-                          y = log(cases_per_100000_pop))
-            )
-
-p + geom_jitter(alpha = 0.3) +
-  geom_smooth()
-```
-
-```{r}
-
-var_summary <- function(df, var, na.rm = TRUE) {
- 
-  summary <- df %>% 
-    summarise(min = min({{var}}, na.rm = na.rm),
-              q1 = quantile({{var}}, probs = 0.25, na.rm = na.rm),
-              median = median({{var}}, na.rm = na.rm),
-              q3 = quantile({{var}}, probs = 0.75, na.rm = na.rm),
-              max = max({{var}}, na.rm = na.rm),
-              iqr = IQR({{var}}, na.rm = na.rm),
-              mean = mean({{var}}, na.rm = na.rm),
-              sd = sd({{var}}, na.rm = na.rm)
-              ) 
-  
-  summary[1, "variable"] <- toString(deparse(substitute(var)))
-  summary %>% 
-    relocate(variable, .before = min)
-  
-}
-
-var_summary(priv_gs_focus, perc_garden)
-```
