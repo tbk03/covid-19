@@ -14,6 +14,7 @@ library(tidyverse)
 library(readxl)
 library(purrr)
 library(corrplot)
+library(colorspace)
 
 source("r_code/covid_helper_functions.R")
 
@@ -251,7 +252,7 @@ total_cases_focus <- total_cases_tidy %>%
 total_cases_focus
 ```
 
-Focusing on average garden size and the average distance to the nearest park, I quickly plotted each variable against cases per  100,000 population, and the log (base 10) of cases per 100,000 population. This was because in the original plots above I had noticed perhaps a hint on non-linearity in the association between the green space variables and the number of cases. Reviewing the plots with the log y scale I thought that this transformation of the data did little to bring what associations are present in better focus. And, log scales are typically less intuitive to interpret than linear scales, so I decided to skick with the linear y scales for the remainder of the analysis.
+Focusing on average garden size and the average distance to the nearest park, I quickly plotted each variable against cases per  100,000 population, and the log (base 10) of cases per 100,000 population. This was because in the original plots above I had noticed perhaps a hint on non-linearity in the association between the green space variables and the number of cases. Reviewing the plots with the log y scale I thought that this transformation of the data did little to bring what associations are present in better focus. And, log scales are typically less intuitive to interpret than linear scales, so I decided to stick with the linear y scales for the remainder of the analysis.
 
 ```{r}
 p2 <-  ggplot(data = total_cases_focus,
@@ -274,7 +275,7 @@ p3 + geom_jitter(alpha = 0.5) +
 
 At this point it occurred to me that it would be interesting to explore if the affluence of each Local Authority had a mediating role to play in the relationships between the two green space variables and the number of Covid-19 cases. So, I imported so some  data (again from the ONS) estimating the average salaries of people living in each local authority.
 
-I didn't look at the NAs created by coercing the variable types to numerics. I just filtered out Local Authority with NA values for the Mean salary later on (ahead of plotting).
+I didn't look at the NAs created by coercing the variable types to numerics in detail. I just filtered out Local Authority with NA values for the Mean salary later on (ahead of plotting).
 
 ```{r}
 income <- read_excel("./Data/PROV - Home Geography Table 8.7a   Annual pay - Gross 2020.xls",
@@ -293,15 +294,19 @@ income <- income %>%
 eng_median_salary <-  26055	
 eng_mean_salary <- 32237
 
-total_cases_income <- total_cases_focus %>% 
+total_cases_income <- total_cases_focus %>%
+  
+  # add the income data to the Covid-19 case and green space data
   pivot_wider(names_from = "explanatory_variable", values_from = "value") %>%
   rename(ave_dist_to_park = "Average distance to nearest Park (m)") %>% # simplifying naming of variable of interest
   left_join(income %>% 
               select(Code, Median, Mean),
             by = c("areaCode" = "Code")
             ) %>% 
+  
+  #create variable to allow grouping in plots below
   mutate(above_mean = Mean > eng_mean_salary,
-         above_median = Median > eng_median_salary) %>% #create variable to allow grouping in plots below
+         above_median = Median > eng_median_salary) %>%
   
   # remove NAs in variables to be included in the plots
   filter(!is.na(cases_per_ht)) %>% 
@@ -314,7 +319,7 @@ total_cases_income
 https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-diverging-color-scale-on-a-heatmap
 
 ```{r}
-library(colorspace)
+
 
 x_label <- expression("\nAverage garden size in"~m^2)
 y_label <- "Total number of confirmed Covid-19 cases\n"
@@ -424,14 +429,22 @@ p4a + green_space_covid_plot_median() +
 
 ```
 
-```{r, fig.height=6}
-# 
-# x <-  quantile(total_cases_income$Median, c(0.25, 0.5, 0.75))
-# total_cases_income$quartile <- cut(total_cases_income$Median, x, include.lowest = TRUE)
-total_cases_income <- total_cases_income %>% 
-  mutate(median_salary_quartile = ntile(Median, 4))
+```{r}
 
-green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var){
+x_label <- expression("\nAverage garden size in"~m^2)
+y_label <- "Total number of confirmed Covid-19 cases\n"
+subtitle <- str_c("The average salary across England as a whole in 2020 is £", eng_mean_salary, ".\n")
+title <- "Average garden size and the number of Covid-19 cases\nin English Local Authorities\n"
+legend_label <- "Average salary in\nthe local authority"
+
+facet_labels_mean <- c(`FALSE` = str_c("Local Authorities with mean salaries\n equal to or below £", eng_mean_salary),
+                      `TRUE` = str_c("Local Authorities with mean salaries\n above £", eng_mean_salary))
+
+facet_labels_median <- c(`FALSE` = str_c("Local Authorities with median salaries\n equal to or below £", eng_median_salary),
+                      `TRUE` = str_c("Local Authorities with median salaries\n above £", eng_median_salary))
+
+
+green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var = NULL, facet_labs = NULL){
   
   # set the midpoint of the diverging colour scale to either England's median or mean salary
   # strengthen the starting colour for the lower half of scale 
@@ -446,6 +459,13 @@ green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var){
                                         mid = eng_mean_salary,
                                         c1 = 0, l1 = 0, p1 = 1, p2 = 1)
   
+  
+  # provide the option not facet the plot
+  if(is.null(facet_var)) facet = NULL 
+  
+  else
+    facet = facet_wrap(vars(.data[[facet_var]]), labeller = as_labeller(facet_labs))
+  
   ggplot(data = df, 
              mapping = aes(x = .data[[x_var]],
                            y = cases_per_ht, 
@@ -456,47 +476,109 @@ green_space_covid_plotter <- function(df, x_var, sal_ave, facet_var){
   
   colour_pallette +
     
-  facet_wrap(vars(.data[[facet_var]]), labeller = as_labeller(facet_labels))
+  facet
 
 }
 
-p <- green_space_covid_plotter(df = subset(total_cases_income, 
+p_park <- green_space_covid_plotter(df = subset(total_cases_income,
+                                            subset = ave_dist_to_park < 800), # remove an outlier
+                                x_var = "ave_dist_to_park",
+                                sal_ave = "Median"
+                          )
+
+p_garden <- green_space_covid_plotter(df = subset(total_cases_income, 
+                                      subset = ave_garden_size < 1000
+                                      ), # remove an outlier
+                          x_var = "ave_garden_size",
+                          sal_ave = "Median"
+                          )
+
+p_park
+p_garden
+
+
+# p + labs(
+#          y = y_label,
+#          fill = legend_label,
+#          title = title,
+#          subtitle = subtitle)
+
+
+
+
+
+```
+
+```{r}
+
+p_park_median <- green_space_covid_plotter(df = subset(total_cases_income,
+                                            subset = ave_dist_to_park < 800), # remove an outlier
+                                x_var = "ave_dist_to_park",
+                                sal_ave = "Median",
+                                facet_var = "above_median",
+                                facet_labs = facet_labels_median
+                          )
+
+p_garden_median <- green_space_covid_plotter(df = subset(total_cases_income, 
                                       subset = ave_garden_size < 1000
                                       ), # remove an outlier
                           x_var = "ave_garden_size",
                           sal_ave = "Median",
-                          facet_var = "median_salary_quartile"
+                          facet_var = "above_median",
+                          facet_labs = facet_labels_median
                           )
 
-p + labs(
-         y = y_label,
-         fill = legend_label,
-         title = title,
-         subtitle = subtitle)
+p_park_mean <- green_space_covid_plotter(df = subset(total_cases_income,
+                                            subset = ave_dist_to_park < 800), # remove an outlier
+                                x_var = "ave_dist_to_park",
+                                sal_ave = "Mean",
+                                facet_var = "above_mean",
+                                facet_labs = facet_labels_mean
+                          )
+
+p_garden_mean <- green_space_covid_plotter(df = subset(total_cases_income, 
+                                      subset = ave_garden_size < 1000
+                                      ), # remove an outlier
+                          x_var = "ave_garden_size",
+                          sal_ave = "Mean",
+                          facet_var = "above_mean",
+                          facet_labs = facet_labels_mean
+                          )
 
 
-p1 <- green_space_covid_plotter(df = subset(total_cases_income,
+
+p_park_median
+p_garden_median
+p_park_mean
+p_garden_mean
+```
+
+
+
+```{r}
+# facet by quartile
+total_cases_income <- total_cases_income %>% 
+  mutate(median_salary_quartile = ntile(Median, 4))
+  
+  
+p_park_median_qs <- green_space_covid_plotter(df = subset(total_cases_income,
                                             subset = ave_dist_to_park < 800), # remove an outlier
                                 x_var = "ave_dist_to_park",
                                 sal_ave = "Median",
-                                facet_var = "median_salary_quartile"
+                                facet_var = "median_salary_quartile",
+                                facet_labs = c(`1` = "Q1", `2` = "Q2", `3` = "Q3", `4` = "Q4")
                           )
 
-p1
-
-# create plot using Mean as the measure of centre for salary data
-
-
-# p4a + green_space_covid_plot_median() +
-#   
-#   
-#   
-#   labs(,
-#        
-#        )
-#   
-
-```
+p_garden_median_qs <- green_space_covid_plotter(df = subset(total_cases_income, 
+                                      subset = ave_garden_size < 1000
+                                      ), # remove an outlier
+                          x_var = "ave_garden_size",
+                          sal_ave = "Median",
+                          facet_var = "median_salary_quartile",
+                          facet_labs = facet_labels_median
+                          )
+                          
+p_park_median_qs
 ```
 
 
