@@ -520,3 +520,26 @@ In the process of incorporating the income data into this exploratory data analy
 3. how to iteratively refactor code throughout the process of create a number of similar plots. 
 
 
+
+```{r}
+
+library(DBI)
+
+
+covid_19_green_space_db <- dbConnect(RSQLite::SQLite(), "covid-19_green_space_db.sqlite")
+dbWriteTable(conn = covid_19_green_space_db, 
+             name = "total_cases", 
+             overwrite = TRUE,
+             value = total_cases %>% 
+                        select(areaCode, areaName, cases_per_ht) %>%
+                        rename(total_cases_per_ht = cases_per_ht) %>% 
+                        mutate(date = data_date)
+             )
+
+dbGetQuery(covid_19_green_space_db , "SELECT * FROM total_cases")
+
+dbDisconnect(covid_19_green_space_db )
+
+```
+
+
