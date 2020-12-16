@@ -15,6 +15,7 @@ library(readxl)
 library(purrr)
 library(corrplot)
 library(colorspace)
+library(lubridate)
 
 source("r_code/covid_helper_functions.R")
 
@@ -62,7 +63,11 @@ parks %>%
 [data.gov.uk](https://coronavirus.data.gov.uk/details/download) provides data on the number of Covid-19 cases (as confirmed by positive tests) occurring in each English Local Authority District. 
 
 ```{r, import covid 1, message=FALSE}
-covid_cases <- read_csv("./Data/ltla_2020-12-08.csv")
+# store the date the data was provided by cornavirus.data.gov.uk for use later on in a plot
+data_date <- "2020-12-08"
+covid_19_file_path <-  str_c("./Data/ltla_", data_date, ".csv")
+
+covid_cases <- read_csv(covid_19_file_path)
                   
 covid_cases %>% 
   sample_n_from_df(10)
@@ -222,7 +227,7 @@ total_cases <- covid_gardens_parks_pop %>%
   mutate(occupancy_rate = population / address_count)
 total_cases
 ```
-## 3. Visualise and interpret the data
+## 3. Visualising the relationship between access to green space and Covid-19 case numbers
 Here I am mostly interested in identifying any associations between the green space related variables (provided by the ONS), and the rates of Covid-19 cases. So, I begin by producing  a set scatter plots, considering the green space related variables as potential explanatory variables (on the x axis), and the number of cases per 100,000 population as the response variable (on the y axis). Where each point plotted represents an individual Local Authority District.
 
 ```{r, fig.width=10}
@@ -272,10 +277,9 @@ p3 + geom_jitter(alpha = 0.5) +
 
 ```
 
+### Exploring the role relative wealth plays in the relationship between access to green space and Covid-19 case numbers
+At this point it occurred to me that it would be interesting to explore if the affluence of each Local Authority had a mediating role to play in the relationships between the two green space variables and the number of Covid-19 cases. So, I imported so some  data (again from the ONS) estimating the average salaries of people living in each local authority. Within the dataset two measures of the average are provided: (1) the median salary within a given local authority; and, (2) the mean salary within a given local authority. I retained both as I had yet to make a decision on which was a more appropriate measure in the context of this analysis.
 
-At this point it occurred to me that it would be interesting to explore if the affluence of each Local Authority had a mediating role to play in the relationships between the two green space variables and the number of Covid-19 cases. So, I imported so some  data (again from the ONS) estimating the average salaries of people living in each local authority.
-
-I didn't look at the NAs created by coercing the variable types to numerics in detail. I just filtered out Local Authority with NA values for the Mean salary later on (ahead of plotting).
 
 ```{r}
 income <- read_excel("./Data/PROV - Home Geography Table 8.7a   Annual pay - Gross 2020.xls",
@@ -288,11 +292,16 @@ income <- income %>%
          Mean = as.double(Mean)
          )
 ```
-```{r}
+A bit of data wrangling was required to integrate the income data into the main dataset I am using for plotting below. Also, I need to remove some NA values that were causing problems in the plotting. I didn't look at these NAs created by coercing the variable types from character to numeric in detail. I just filtered out Local Authority with NA values for the Mean salary later on (ahead of plotting). I also created a couple of new variables which are used later on to facet the plots.
 
+```{r}
 # taken from the same dataset as the Local Authority mean/median data
+# these are the figures for mean/median salary for England as a whole
 eng_median_salary <-  26055	
 eng_mean_salary <- 32237
+```
+
+```{r}
 
 total_cases_income <- total_cases_focus %>%
   
@@ -315,9 +324,23 @@ total_cases_income <- total_cases_focus %>%
 
 total_cases_income
 ```
-* refactoring and learning about writing functions with ggplot2 (https://fishandwhistle.net/slides/rstudioconf2020/#1) - produce plots with common features (e.g. y axis, use of facetting) but differences (e.g. x variable, colour gradient for fill)
-* colour scale considerations https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-diverging-color-scale-on-a-heatmap
-* mean versus median as the appropriate measure of the average salaries within Local Authorities and across the UK as a whole
+
+
+
+
+I continued developing the plots of the two green space variables of interest (`ave_dist_to_park` and `ave_garden_size`) vs the total number of Covid-19 cases, by applying colour to provide a basic representation of the relative affluence of each Local Authority District. In the two plots below a diverging colour scale is used: 
+
+*The center of the colour scale (shown as white) is the national median salary; 
+*Local authorities with median salaries above the national median are shown in red (the higher above the national median salary of £`r as.integer(eng_median_salary)` the darker the red); 
+*Local authorities with median salaries below the national median are shown in blue (the lower below the national median salary of £`r as.integer(eng_median_salary)` the darker the blue).
+
+It took quite a lot of experimentation to find the solution to using a specified midpoint from which the colours diverge. For example, it wasn't obvious how to do this using scale_fill_brewer or if it was even possible ...
+
+In terms of the insights generated from the two plots below:
+
+* In both plots we can see that local authorities with more affluent residents (shown in blue) tend to have experienced fewer cases of Covid-19 per 100,000 population.
+* In both plots we can see almost all of the local authorities worst affect by Covid-19 (say those with more than a total of 3500 per 100,000 population) have median salaries below the national median of £`r as.integer(eng_median_salary)`.
+
 
 
 ```{r}
@@ -374,14 +397,14 @@ p_garden <- green_space_covid_plotter(df = subset(total_cases_income,
 
 p_park
 p_garden
-
-
-
-
-
-
-
 ```
+
+I wondered if any relationship between the green space variables might be being obscured by plotting affluent and deprived local authorities on the same figure. I wondered if affluent and deprived local authorities might be somewhat distinct sub-groups. So, 
+
+* In the case of `ave_garden_size` we can see evidence of a negative association between average garden size and the total number of Covid-19 cases. So, local authorities with smaller average garden sizes
+* In the case of `ave_dist_to_park` 
+
+Mean versus median
 
 ```{r}
 
@@ -471,6 +494,7 @@ p_garden_median_qs
 Produce final plot
 
 ```{r}
+data_date <- ymd(data_date)
 
 x_label <- expression("\nAverage garden size in"~m^2)
 y_label <- "Total number of confirmed Covid-19 cases\nper 100,000 population\n"
@@ -482,8 +506,17 @@ p_garden_mean + labs(x = x_label,
          y = y_label,
          fill = legend_label,
          title = title,
-         subtitle = subtitle)
+         subtitle = subtitle,
+         caption = str_c("\nCovid-19 cases number calculated from data issued on ", format(data_date, "%d/%m/%Y"))
+         )
 ```
 
+## A quick note on what I learnt in the process of producing the plots below
+
+In the process of incorporating the income data into this exploratory data analysis. There were a couple of key areas for me to learn about:  
+
+1. how to [write functions with ggplot2](https://fishandwhistle.net/slides/rstudioconf2020/#1) that can produce plots with common features (e.g. in this case data mapped to the y axis) but with the ability to configure certain aspects plots (e.g. in the case the data mapped to the x axis). It was particularly useful to learn about how adding NULL to a ggplot object is help in creating conditions within functions that produce plots.
+2. how to use colour scales for continuous variable. More specifically, [how to set midpoints when using diverging colour scales](https://stackoverflow.com/questions/58718527/setting-midpoint-for-continuous-diverging-color-scale-on-a-heatmap).
+3. how to iteratively refactor code throughout the process of create a number of similar plots. 
 
 
