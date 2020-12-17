@@ -29,6 +29,7 @@ dbDisconnect(covid_19_green_space_db )
 total_cases
 ```
 
+What I wanted to be able to do was plot the Friends of the Earth Green Space indicies against the incokme index, but that is not possible as green space indicies are only provided at the MSOA scale.
 
 ```{r}
 green_space <- read_excel("./Data/(FOE) Green Space Consolidated Data - England - Version 2.1.xlsx",
@@ -45,4 +46,40 @@ total_cases %>%
   
   geom_point()
 ```
+
+So shift to MSOA scale
+```{r}
+
+green_space <- read_excel("./Data/(FOE) Green Space Consolidated Data - England - Version 2.1.xlsx",
+                          sheet = "MSOAs V2.1")
+
+green_space
+
+```
+
+[Direct link to the dataset](https://api.coronavirus.data.gov.uk/v2/data?areaType=msoa&metric=newCasesBySpecimenDateRollingSum&metric=newCasesBySpecimenDateRollingRate&metric=newCasesBySpecimenDateChange&metric=newCasesBySpecimenDateChangePercentage&metric=newCasesBySpecimenDateDirection&format=csv) provided by cornavirus.data.gov.uk
+
+```{r}
+msoa_cases <- read_csv("./Data/msoa_2020-12-17.csv")
+msoa_cases
+```
+
+```{r}
+msoa_cases %>% 
+  left_join(green_space,
+            by = c("areaCode" = "MSOA_Code")
+            ) %>% 
+  
+  select(areaCode, areaName, date, newCasesBySpecimenDateRollingRate, Income_Index, Green_Space_Deprivation_Rating) %>% 
+  
+  group_by(date, Green_Space_Deprivation_Rating) %>% 
+  summarise(average_new_case_rate = mean(newCasesBySpecimenDateRollingRate, na.rm = TRUE)) %>% 
+  
+  ggplot(mapping = aes(x = date, y = Green_Space_Deprivation_Rating, fill = average_new_case_rate)) +
+  
+  geom_tile()
+
+
+```
+
 
