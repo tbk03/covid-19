@@ -1,0 +1,48 @@
+---
+title: "covid_FOE_green_space_eda_1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(readr)
+library(purrr)
+library(DBI)
+library(lubridate)
+```
+
+Import total Covid-19 cases for local authorities (as of 08/12/2020). This data was processed in `green_space_eda_3.Rmd`.
+
+```{r}
+covid_19_green_space_db <- dbConnect(RSQLite::SQLite(), "covid-19_green_space_db.sqlite")
+
+total_cases <- dbGetQuery(covid_19_green_space_db , "SELECT * FROM total_cases") %>% 
+  mutate(date = as_date(date))
+
+dbDisconnect(covid_19_green_space_db )
+
+total_cases
+```
+
+
+```{r}
+green_space <- read_excel("./Data/(FOE) Green Space Consolidated Data - England - Version 2.1.xlsx",
+                          sheet = "Local Authorities V2.1")
+
+green_space
+```
+```{r}
+total_cases %>% 
+  select(-date) %>% 
+  left_join(green_space, by = c("areaCode" = "LA_Code")) %>% 
+  
+  ggplot(mapping = aes(x = Income_Index, y = Pcnt_MSOAs_Rating_E, colour = total_cases_per_ht)) +
+  
+  geom_point()
+```
+
