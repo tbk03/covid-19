@@ -399,12 +399,24 @@ p_park
 p_garden
 ```
 
-I wondered if any relationship between the green space variables might be being obscured by plotting affluent and deprived local authorities on the same figure. I wondered if affluent and deprived local authorities might be somewhat distinct sub-groups. So, 
+I wondered if any relationship between the green space variables might be being obscured by plotting affluent and deprived local authorities on the same figure. I wondered if relatively affluent and deprived local authorities might be somewhat distinct sub-groups. So, 
 
-* In the case of `ave_garden_size` we can see evidence of a negative association between average garden size and the total number of Covid-19 cases. So, local authorities with smaller average garden sizes
-* In the case of `ave_dist_to_park` 
+In the case of `ave_garden_size`: 
 
-Mean versus median
+* We can see evidence of a negative association between average garden size and the total number of Covid-19 cases. The association appears stronger for less affluent local authorities. 
+* So, local authorities with smaller average garden sizes tend to have higher number of cases, but the affluence of the local authority has a role to play here too. As we can observe a group of wealthy local authorities with both small garden sizes and low numbers of Covid-19 cases. 
+* Population density could acting as a confounding variable. As higher population density might explain both higher numbers of cases per 100,00 population and smaller garden sizes.
+
+In the case of `ave_dist_to_park`:
+
+* we can see evidence of a negative association between the average distance households are from a park and the total number of Covid-19 cases. 
+* Again the association appears stronger for less affluent local authorities. So, local authorities where on average people have less distance to travel to a park, but again here affluence of the local authority has a role to play. 
+* Again population density could be a confounding variable.
+
+I also considered whether to use the mean versus median as the appropriate measure of average salary both within the individual local authorities plotted, and across the UK as a whole. The later is important because it is used as a somewhat arbitrary 'dividing line' between the less and more affluent authorities. Factors I considered:
+
+* Median salary is generally considered a more appropriate measure of center for salary (than mean) because it is robust to outliers. In this case the outliers of primary concern being relatively small numbers of very high earning individuals. 
+* However, in this context of the `ave_garden_size` comparing the versions using the mean and median, there are some advantages to using the mean. As the mean national salary is higher than the median national salary, more local authorities are classified as below average (in terms of affluence) when using the mean. This in turn has the affect of giving a clearer view of the nature of the association between garden size and the total number of Covid-19 cases. 
 
 ```{r}
 
@@ -458,8 +470,14 @@ p_garden_median
 p_park_mean
 p_garden_mean
 ```
+I did then wonder if separating into additional sub groups based on the affluence of the residents in each local authority might improve the plot. So, below I plotted the green space variables vs. the total number of Covid-19 cases again but this time grouped local authorities based on which quartile they fell into (based on the median salary within the local authority). This al
 
 
+*Interesting potential groups of local authorities: *
+
+* Low garden space, high cases, low income
+* Low garden space, low cases, high income
+* High garden space, low cases, varied income
 
 ```{r}
 # create a new variable to allow faceting by quartile
@@ -467,7 +485,10 @@ total_cases_income <- total_cases_income %>%
   mutate(median_salary_quartile = ntile(Median, 4))
 
 # define labels for plot facets
-facet_labs <-  c(`1` = "Q1", `2` = "Q2", `3` = "Q3", `4` = "Q4")
+facet_labs <-  c(`1` = "Most deprived Local Authorities (Q1)", 
+                 `2` = "Deprived Local Authorities (Q2)", 
+                 `3` = "Affluent Local Authorities (Q3)", 
+                 `4` = "Most affluent Local Authorities (Q4)")
   
   
 p_park_median_qs <- green_space_covid_plotter(df = subset(total_cases_income,
@@ -487,8 +508,14 @@ p_garden_median_qs <- green_space_covid_plotter(df = subset(total_cases_income,
                           facet_labs = facet_labs
                           )
                           
-p_park_median_qs
-p_garden_median_qs
+p_park_median_qs #+
+  # scale_fill_continuous_divergingx(palette = 'RdBu', # overwrite fill scale to set midpoint
+  #                                  mid = median(total_cases_income$Median),
+  #                                  c1 = 0, l1 = 0, p1 = 1, p2 = 1)
+p_garden_median_qs #+
+  # scale_fill_continuous_divergingx(palette = 'RdBu', # overwrite fill scale to set midpoint
+  #                                  mid = median(total_cases_income$Median),
+  #                                  c1 = 0, l1 = 0, p1 = 1, p2 = 1)
 ```
 
 Produce final plot
@@ -502,14 +529,84 @@ subtitle <- str_c("The mean salary across England as a whole in 2020 is £", eng
 title <- "Average garden size and the number of Covid-19 cases\nin English Local Authorities\n"
 legend_label <- "Mean salary in\nthe local authority"
 
-p_garden_mean + labs(x = x_label,
-         y = y_label,
-         fill = legend_label,
-         title = title,
-         subtitle = subtitle,
-         caption = str_c("\nCovid-19 cases number calculated from data issued on ", format(data_date, "%d/%m/%Y"))
-         )
+p_garden_mean + 
+  labs(x = x_label,
+       y = y_label,
+       fill = legend_label,
+       title = title,
+       subtitle = subtitle,
+       caption = str_c("\nCovid-19 cases number calculated from data issued on ", format(data_date, "%d/%m/%Y"))
+      )
 ```
+
+```{r, fig.height=5.5}
+p_garden_median_qs +
+  labs(x = x_label,
+       y = y_label,
+       fill = "Median salary within\neach local authority",
+       title = "Average garden size and the number of Covid-19 cases in English Local Authorities",
+       subtitle = str_c("The median salary across England as a whole in 2020 is £", eng_median_salary, ".\n"),
+       caption = str_c("\nCovid-19 cases number calculated from data issued on ", format(data_date, "%d/%m/%Y"))
+      )
+```
+
+```{r}
+library(ggrepel)
+
+p_gardens_small <- green_space_covid_plotter(df = subset(total_cases_income,
+                                                             subset = ave_garden_size < 200),
+                                                 x_var = "ave_garden_size",
+                                                 sal_ave = "Median"
+                                                 )
+
+p_gardens_small +
+  
+  geom_text_repel(data = subset(total_cases_income,
+                                subset = cases_per_ht > 3000 &
+                                  ave_garden_size < 200),
+                  mapping = aes(label = areaName),
+                  nudge_x = -10,
+                  size = 3) 
+  
+```
+```{r}
+p_gardens_small +
+  
+  geom_text_repel(data = subset(total_cases_income,
+                                subset = cases_per_ht < 3000 &
+                                  ave_garden_size < 200),
+                  mapping = aes(label = areaName),
+                  nudge_x = 10,
+                  size = 3)
+```
+```{r}
+p <-  ggplot(data = subset(total_cases_income, 
+                           subset = ave_garden_size < 900), # remove an outlier
+             mapping = aes(x = ave_garden_size, y = ave_dist_to_park,
+                           colour = cases_per_ht)
+             )
+
+p + geom_point() +
+  scale_color_viridis_c()
+```
+
+
+```{r}
+p_park_distant <- green_space_covid_plotter(df = subset(total_cases_income,
+                                            subset = ave_dist_to_park > 500), 
+                                            x_var = "ave_dist_to_park",
+                                            sal_ave = "Median"
+                                            )
+
+p_park_distant + 
+  geom_text_repel(data = subset(total_cases_income, 
+                                subset = ave_dist_to_park > 500),
+                  mapping = aes(label = areaName),
+                  nudge_x = -10,
+                  size = 3)
+
+```
+
 
 ## A quick note on what I learnt in the process of producing the plots below
 

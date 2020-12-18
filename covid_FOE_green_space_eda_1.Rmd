@@ -15,6 +15,11 @@ library(purrr)
 library(DBI)
 library(lubridate)
 ```
+*Ideas: * 
+
+* Group LAs by above and below average income (use the income_index) conduct a hypothesis test (H0 proportion with green space rating E are equal)
+
+
 
 Import total Covid-19 cases for local authorities (as of 08/12/2020). This data was processed in `green_space_eda_3.Rmd`.
 
