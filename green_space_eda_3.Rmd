@@ -16,6 +16,8 @@ library(purrr)
 library(corrplot)
 library(colorspace)
 library(lubridate)
+library(ggrepel)
+
 
 source("r_code/covid_helper_functions.R")
 
@@ -324,10 +326,6 @@ total_cases_income <- total_cases_focus %>%
 
 total_cases_income
 ```
-
-
-
-
 I continued developing the plots of the two green space variables of interest (`ave_dist_to_park` and `ave_garden_size`) vs the total number of Covid-19 cases, by applying colour to provide a basic representation of the relative affluence of each Local Authority District. In the two plots below a diverging colour scale is used: 
 
 *The center of the colour scale (shown as white) is the national median salary; 
@@ -470,14 +468,8 @@ p_garden_median
 p_park_mean
 p_garden_mean
 ```
-I did then wonder if separating into additional sub groups based on the affluence of the residents in each local authority might improve the plot. So, below I plotted the green space variables vs. the total number of Covid-19 cases again but this time grouped local authorities based on which quartile they fell into (based on the median salary within the local authority). This al
+I did then wonder if separating into additional sub groups based on the affluence of the residents in each local authority might improve the plot. So, below I plotted the green space variables vs. the total number of Covid-19 cases again but this time grouped local authorities based on which quartile they fell into (based on the median salary within the local authority). Overall, this plot has the benefit of making it clear that most affluent Local Authorities have tended to have lower numbers of cases. I decided however that the visual complexity creatde by the additional facets outweighed this benefit, and the two facet plots are easier to interpret.
 
-
-*Interesting potential groups of local authorities: *
-
-* Low garden space, high cases, low income
-* Low garden space, low cases, high income
-* High garden space, low cases, varied income
 
 ```{r}
 # create a new variable to allow faceting by quartile
@@ -517,8 +509,107 @@ p_garden_median_qs #+
   #                                  mid = median(total_cases_income$Median),
   #                                  c1 = 0, l1 = 0, p1 = 1, p2 = 1)
 ```
+*Interesting potential groups of local authorities: * from visual inspection of the plots above I identified three potentially interesting groups of local authorities. These are local authorities with:
 
-Produce final plot
+* Low garden space, very high numbers of cases and low median income. The plot below shows that these local authorities tend to be in the North West and North East of England.
+* Very low garden space, low numbers of cases and high median income. The plot below shows that these local authorities tend to be in London.
+* High garden space, low numbers of cases and varied median income. The plot below shows that these local authorities tend to be more rural (than the local authorities in the other two groups).
+
+
+
+```{r}
+p_gardens_small <- green_space_covid_plotter(df = subset(total_cases_income,
+                                                             subset = ave_garden_size < 200),
+                                                 x_var = "ave_garden_size",
+                                                 sal_ave = "Median"
+                                                 )
+
+p_gardens_small +
+  
+  geom_text_repel(data = subset(total_cases_income,
+                                subset = cases_per_ht > 4000 &
+                                  ave_garden_size < 200),
+                  mapping = aes(label = areaName),
+                  nudge_x = -10,
+                  size = 3) 
+
+p_gardens_small +
+  
+  geom_text_repel(data = subset(total_cases_income,
+                                subset = cases_per_ht < 3000 &
+                                  ave_garden_size < 150),
+                  mapping = aes(label = areaName),
+                  nudge_x = 10,
+                  size = 3)
+
+
+
+p_park_distant <- green_space_covid_plotter(df = subset(total_cases_income,
+                                            subset = ave_dist_to_park > 500), 
+                                            x_var = "ave_dist_to_park",
+                                            sal_ave = "Median"
+                                            )
+
+p_park_distant + 
+  geom_text_repel(data = subset(total_cases_income, 
+                                subset = ave_dist_to_park > 500),
+                  mapping = aes(label = areaName),
+                  nudge_x = -10,
+                  size = 3)
+  
+```
+
+Reflecting on the three groups of local authorities, I wondered how strong the correlation between `ave_garden_size` and `ave_dist_to_park` might be. The plot shows a degree of positive association between the two variables, with local authorities with larger average garden sizes, tending to have larger average distances to the nearest park. Or perhaps better expressed as in local authorities with larger gardens households tend to have travel greater distances to their nearest park. A confounding variable in this case could be population density. As intuitively is seems likely that parks are more frequently found in denser urban areas (with smaller gardens) than in less dense sub-urban and rural areas (with larger gardens).
+
+```{r}
+p <-  ggplot(data = subset(total_cases_income, 
+                           subset = ave_garden_size < 900), # remove an outlier
+             mapping = aes(x = ave_garden_size, y = ave_dist_to_park,
+                           colour = cases_per_ht)
+             )
+
+p + geom_point(alpha = 0.6, size = 1.75) +
+  scale_color_viridis_c()
+
+```
+250 m2 is a relatively small garden (in the context of the dataset), but that is actually a large area (equivalent to a standard size swimming pool)
+
+```{r}
+p_garden_dist <- ggplot(data = total_cases_income,
+                        mapping = aes(x = ave_garden_size)
+                        ) 
+
+p_garden_dist + geom_histogram()
+
+summary(total_cases_income$ave_garden_size)
+```
+
+```{r}
+p_park_dist <- ggplot(data = total_cases_income,
+                        mapping = aes(x = ave_dist_to_park)
+                        ) 
+
+p_park_dist + geom_histogram()
+
+summary(total_cases_income$ave_dist_to_park)
+```
+
+
+
+
+## 4. Summary and conclusions
+
+### 4.1. Conclusions
+
+*
+
+### 4.2. Thoughts for writing up
+
+*
+
+### 4.3. Produce plots for blog 
+
+*
 
 ```{r}
 data_date <- ymd(data_date)
@@ -549,64 +640,6 @@ p_garden_median_qs +
        caption = str_c("\nCovid-19 cases number calculated from data issued on ", format(data_date, "%d/%m/%Y"))
       )
 ```
-
-```{r}
-library(ggrepel)
-
-p_gardens_small <- green_space_covid_plotter(df = subset(total_cases_income,
-                                                             subset = ave_garden_size < 200),
-                                                 x_var = "ave_garden_size",
-                                                 sal_ave = "Median"
-                                                 )
-
-p_gardens_small +
-  
-  geom_text_repel(data = subset(total_cases_income,
-                                subset = cases_per_ht > 3000 &
-                                  ave_garden_size < 200),
-                  mapping = aes(label = areaName),
-                  nudge_x = -10,
-                  size = 3) 
-  
-```
-```{r}
-p_gardens_small +
-  
-  geom_text_repel(data = subset(total_cases_income,
-                                subset = cases_per_ht < 3000 &
-                                  ave_garden_size < 200),
-                  mapping = aes(label = areaName),
-                  nudge_x = 10,
-                  size = 3)
-```
-```{r}
-p <-  ggplot(data = subset(total_cases_income, 
-                           subset = ave_garden_size < 900), # remove an outlier
-             mapping = aes(x = ave_garden_size, y = ave_dist_to_park,
-                           colour = cases_per_ht)
-             )
-
-p + geom_point() +
-  scale_color_viridis_c()
-```
-
-
-```{r}
-p_park_distant <- green_space_covid_plotter(df = subset(total_cases_income,
-                                            subset = ave_dist_to_park > 500), 
-                                            x_var = "ave_dist_to_park",
-                                            sal_ave = "Median"
-                                            )
-
-p_park_distant + 
-  geom_text_repel(data = subset(total_cases_income, 
-                                subset = ave_dist_to_park > 500),
-                  mapping = aes(label = areaName),
-                  nudge_x = -10,
-                  size = 3)
-
-```
-
 
 ## A quick note on what I learnt in the process of producing the plots below
 

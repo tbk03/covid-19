@@ -18,6 +18,7 @@ library(lubridate)
 *Ideas: * 
 
 * Group LAs by above and below average income (use the income_index) conduct a hypothesis test (H0 proportion with green space rating E are equal)
+* K-means clustering: https://www.statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/ Does it come up with different groups to the green space deprivation metrics designed by FOE.
 
 
 
