@@ -106,18 +106,52 @@ green_space %>%
 ```{r}
 
 library(tidymodels)
-set.seed(27)
+library(NbClust)
+library(factoextra)
+library(GGally)
 
+```
+
+```{r}
 green_space_indices <- green_space %>% 
   select(GSDI_Access, GSDI_AvgArea, GSDI_Garden)
 
-green_space_indices
+
+ggpairs(green_space_indices)
+```
 
 
+```{r}
+
+
+fviz_nbclust(green_space_indices, kmeans, method = "silhouette")
+
+set.seed(27)
 kclust <- kmeans(green_space_indices, centers = 5, nstart = 100)
 summary(kclust)
+```
 
-augment(kclust, green_space_indices)
+```{r}
+green_space_indices <- augment(kclust, green_space_indices)
+green_space_indices
+
+green_space_indices %>% 
+  group_by(.cluster) %>% 
+  summarise(mean_gsdi_access = mean(GSDI_Access),
+         mean_gsdi_ave_area = mean(GSDI_AvgArea),
+         mean_gsdi_garden = mean(GSDI_Garden),
+         med_gsdi_access = median(GSDI_Access),
+         med_gsdi_ave_area = median(GSDI_AvgArea),
+         med_gsdi_garden = median(GSDI_Garden)
+         )
+```
+
+```{r}
+p <- ggplot(data = green_space_indices,
+            mapping = aes(x = GSDI_Access, y = GSDI_AvgArea, colour = `.cluster`)
+            )
+
+p + geom_jitter()
 ```
 
 
