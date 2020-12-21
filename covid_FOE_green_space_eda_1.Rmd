@@ -15,9 +15,11 @@ library(purrr)
 library(DBI)
 library(lubridate)
 ```
+
+https://friendsoftheearth.uk/nature/englands-not-so-green-and-pleasant-land-millions-can-only-access-green-space-size-garden
+
 *Ideas: * 
 
-* Group LAs by above and below average income (use the income_index) conduct a hypothesis test (H0 proportion with green space rating E are equal)
 * K-means clustering: https://www.statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/ Does it come up with different groups to the green space deprivation metrics designed by FOE.
 
 
@@ -70,7 +72,7 @@ msoa_cases <- read_csv("./Data/msoa_2020-12-17.csv")
 msoa_cases
 ```
 
-```{r}
+```{r, fig.width=10}
 msoa_cases %>% 
   left_join(green_space,
             by = c("areaCode" = "MSOA_Code")
@@ -83,9 +85,39 @@ msoa_cases %>%
   
   ggplot(mapping = aes(x = date, y = Green_Space_Deprivation_Rating, fill = average_new_case_rate)) +
   
-  geom_tile()
+  geom_tile() +
+  
+  scale_fill_viridis_c()
 
 
+```
+
+
+https://www.tidymodels.org/learn/statistics/k-means/
+https://www.statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clustering-by-hand-and-in-r/
+
+```{r}
+green_space
+
+green_space %>% 
+  select(GSDI_Access, GSDI_AvgArea, GSDI_Garden) %>% 
+  map(~ unique(.x))
+```
+```{r}
+
+library(tidymodels)
+set.seed(27)
+
+green_space_indices <- green_space %>% 
+  select(GSDI_Access, GSDI_AvgArea, GSDI_Garden)
+
+green_space_indices
+
+
+kclust <- kmeans(green_space_indices, centers = 5, nstart = 100)
+summary(kclust)
+
+augment(kclust, green_space_indices)
 ```
 
 
