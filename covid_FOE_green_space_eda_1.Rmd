@@ -99,9 +99,7 @@ https://www.statsandr.com/blog/clustering-analysis-k-means-and-hierarchical-clus
 ```{r}
 green_space
 
-green_space %>% 
-  select(GSDI_Access, GSDI_AvgArea, GSDI_Garden) %>% 
-  map(~ unique(.x))
+
 ```
 ```{r}
 
@@ -112,30 +110,38 @@ library(GGally)
 
 ```
 
+
+https://policy.friendsoftheearth.uk/sites/files/policy/documents/2020-10/Green_space_gap_full_report_1.pdf
+
 ```{r}
+
+green_space %>% 
+  select(GSDI_Access, GSDI_AvgArea, GSDI_Garden) %>% 
+  map(~ unique(.x))
+
 green_space_indices <- green_space %>% 
   select(GSDI_Access, GSDI_AvgArea, GSDI_Garden)
 
-
-ggpairs(green_space_indices)
+green_space_indices
 ```
 
 
 ```{r}
-
-
 fviz_nbclust(green_space_indices, kmeans, method = "silhouette")
+```
 
+
+```{r}
 set.seed(27)
 kclust <- kmeans(green_space_indices, centers = 5, nstart = 100)
 summary(kclust)
 ```
 
 ```{r}
-green_space_indices <- augment(kclust, green_space_indices)
-green_space_indices
+green_space <- augment(kclust, green_space)
+green_space
 
-green_space_indices %>% 
+green_space %>% 
   group_by(.cluster) %>% 
   summarise(mean_gsdi_access = mean(GSDI_Access),
          mean_gsdi_ave_area = mean(GSDI_AvgArea),
@@ -147,11 +153,66 @@ green_space_indices %>%
 ```
 
 ```{r}
-p <- ggplot(data = green_space_indices,
-            mapping = aes(x = GSDI_Access, y = GSDI_AvgArea, colour = `.cluster`)
+
+gsdi_plot <- function(x_var, y_var){
+  
+  p <- ggplot(data = green_space,
+            mapping = aes(x = .data[[x_var]], y = .data[[y_var]], colour = `.cluster`)
             )
 
-p + geom_jitter()
+  p + geom_jitter()
+}
+
+gsdi_plot("GSDI_Access", "GSDI_AvgArea")
+gsdi_plot("GSDI_Access", "GSDI_Garden")
+gsdi_plot("GSDI_AvgArea", "GSDI_Garden")
+
 ```
 
+**What if I repeat the analysis above put use the data that underpins the index/scores create by the FOE?**
+
+There are two measures of green space per capita in the FOE dataset. I guess these were from different sources, but they appear broadly equivalent ...
+
+```{r}
+
+p <- ggplot(data = green_space,
+            mapping = aes(x = GreenSpace_Area_Per_Capita, y = Unbuffered_GOSpace_Per_Capita)
+            )
+
+p + geom_point(alpha = 0.5)
+
+```
+```{r}
+green_space_variables <- green_space %>% 
+  select(GreenSpace_Area_Per_Capita, Garden_Area_Per_Capita, Pcnt_Pop_With_GOSpace_Access)
+
+green_space_variables
+```
+
+```{r}
+fviz_nbclust(green_space_variables, kmeans, method = "silhouette")
+```
+
+Struggled to get meaningful clusters out in initial experiments (only put around 10 minutes in ...)
+
+```{r}
+set.seed(27)
+kclust <- kmeans(green_space_variables, centers = 4, nstart = 100)
+summary(kclust)
+
+green_space <- augment(kclust, green_space)
+green_space
+
+green_space %>% 
+  group_by(.cluster) %>% 
+  summarise(mean_gs_area =  mean(GreenSpace_Area_Per_Capita), 
+            mean_gar_area = mean(Garden_Area_Per_Capita), 
+            mean_perc_pop_5_min_walk = mean(Pcnt_Pop_With_GOSpace_Access)
+         )
+
+```
+
+
+
+Couldn't find data for rural-urban classification - https://www.gov.uk/government/statistics/2011-rural-urban-classification email ons??
 
